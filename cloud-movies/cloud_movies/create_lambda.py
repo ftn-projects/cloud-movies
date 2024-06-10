@@ -11,20 +11,21 @@ TIMEOUT_SECONDS = 10
 
 
 # Function Definitions
-def create_lambda(scope, id, handler, include_dir, layers, lambda_role):
+def create_lambda(scope, id, handler, include_dir, lambda_role, layers = []):
     function = _lambda.Function(
         scope, id,
         runtime=RUNTIME,
-        layers=layers,
         handler=handler,
+        layers=layers,
         code=_lambda.Code.from_asset(include_dir,
-            bundling=BundlingOptions(
-                image=RUNTIME.bundling_image,
-                command=[
-                    "bash", "-c",
-                    "pip install --no-cache -r requirements.txt -t /asset-output && cp -r . /asset-output"
-                ],
-            ),),
+            # bundling=BundlingOptions(
+            #     image=RUNTIME.bundling_image,
+            #     # command=[
+            #     #     "bash", "-c",
+            #     #     "pip install --no-cache -r requirements.txt -t /asset-output && cp -r . /asset-output"
+            #     # ],
+            # ),
+            ),
         memory_size=MEMORY_SIZE,
         timeout=Duration.seconds(TIMEOUT_SECONDS),
         role=lambda_role
