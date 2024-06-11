@@ -65,10 +65,20 @@ class CloudMoviesStack(Stack):
                     "dynamodb:PutItem",
                     "dynamodb:UpdateItem",
                     "dynamodb:DeleteItem",
-                    "s3:GetObject",
-                    "s3:PutObject"
                 ],
                 resources=[movies_table.table_arn]
+            )
+        )
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:PutObjectACL",
+                    "s3:ListBucket"
+                ],
+                resources=[f"{source_bucket.bucket_arn}/*"]
             )
         )
 
@@ -77,6 +87,12 @@ class CloudMoviesStack(Stack):
         upload_lambda.add_environment("BUCKET_NAME", source_bucket.bucket_name)
         source_bucket.grant_put(upload_lambda)
         source_bucket.grant_put_acl(upload_lambda)
+
+        download_lambda = create_lambda(self, "downloadFile", "downloadFile.download_file_handler", "lambdas", lambda_role)
+        download_lambda.add_environment("TABLE_NAME", movies_table.table_name)
+        download_lambda.add_environment("BUCKET_NAME", source_bucket.bucket_name)
+        source_bucket.grant_read(download_lambda)
+    
 
 
         handler = create_lambda(self, "handler", "handler.handler", "lambdas", lambda_role)
@@ -95,6 +111,6 @@ class CloudMoviesStack(Stack):
 
 
         # '/download' resource with a GET method
-        # download_resource = api.root.add_resource("download")
-        # download_integration = apigateway.LambdaIntegration(download_handler)  # TODO download handler
-        # download_resource.add_method("GET", upload_integration)
+        download_resource = api.root.add_resource("download")
+        download_integration = apigateway.LambdaIntegration(download_lambda)  # TODO download handler
+        download_resource.add_method("GET", download_integration)
