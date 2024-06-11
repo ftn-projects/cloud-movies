@@ -51,14 +51,13 @@ def upload_file_handler(event, context):
         }
     
     try:
-        upload_url = s3_client.generate_presigned_url(
-            'put_object',
-            Params={
-                'Bucket': bucket_name,
-                'Key': f"{file_name}"
-            },
-            ExpiresIn=200
-        )
+        upload_url = s3_client.generate_presigned_post(
+            Bucket= bucket_name,
+            Key=file_name,
+            Fields = {"Content-Type": "*/*"},
+            ExpiresIn = 3600
+            )
+            
     except ClientError:
         return {
             'statusCode': 500,
