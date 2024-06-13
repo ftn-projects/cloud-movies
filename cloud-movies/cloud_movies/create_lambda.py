@@ -1,40 +1,41 @@
+from os import path
 from aws_cdk import (
     aws_lambda as _lambda,
-    BundlingOptions,
     Duration
 )
 
 
+LAMBDAS_HOME = 'lambdas'
 RUNTIME = _lambda.Runtime.PYTHON_3_10
-MEMORY_SIZE = 128
-TIMEOUT_SECONDS = 10
+TIMEOUT_DURATION = Duration.seconds(10)
 
 
-# Function Definitions
-def create_lambda(scope, id, handler, include_dir, lambda_role, layers = []):
+def create_lambda(scope, id, include_dir, handler, layers=[]):
     function = _lambda.Function(
         scope, id,
-        runtime=RUNTIME,
+        code=_lambda.Code.from_asset(path.join(LAMBDAS_HOME, include_dir)),
         handler=handler,
+        runtime=RUNTIME,
         layers=layers,
-        code=_lambda.Code.from_asset(include_dir,
-            # bundling=BundlingOptions(
-            #     image=RUNTIME.bundling_image,
-            #     # command=[
-            #     #     "bash", "-c",
-            #     #     "pip install --no-cache -r requirements.txt -t /asset-output && cp -r . /asset-output"
-            #     # ],
-            # ),
-            ),
-        memory_size=MEMORY_SIZE,
-        timeout=Duration.seconds(TIMEOUT_SECONDS),
-        role=lambda_role
+        timeout=TIMEOUT_DURATION
     )
-    fn_url = function.add_function_url(
+
+    function.add_function_url(
         auth_type=_lambda.FunctionUrlAuthType.NONE,
         cors=_lambda.FunctionUrlCorsOptions(
-            allowed_origins=["*"]
+            allowed_origins=['*']
         )
     )
     
     return function
+
+
+def create_lambda_with_code(scope, id, code, layers=[]):
+    return _lambda.Function(
+        scope, id,
+        code=_lambda.InlineCode(code),
+        handler='index.handler',
+        runtime=RUNTIME,
+        layers=layers,
+        timeout=TIMEOUT_DURATION
+    )

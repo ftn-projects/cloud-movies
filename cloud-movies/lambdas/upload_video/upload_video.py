@@ -8,7 +8,7 @@ dynamodb_client = boto3.client('dynamodb')
 s3_client = boto3.client('s3')
 
 
-def upload_file_handler(event, context):
+def handler(event, context):
     table_name = os.environ['TABLE_NAME']
     bucket_name = os.environ['BUCKET_NAME']
 

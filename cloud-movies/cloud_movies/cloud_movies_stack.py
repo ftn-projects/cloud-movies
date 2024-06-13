@@ -1,17 +1,24 @@
 from constructs import Construct
-from .create_lambda import create_lambda
+from .create_lambda import create_lambda, create_lambda_with_code
 from aws_cdk import (
-    aws_lambda as _lambda,
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
     aws_s3 as s3,
-    aws_iam as iam,
     Stack,
 )
 
 
-DYNAMO_MOVIES_TABLE = "movies"
-S3_SOURCE_BUCKET = "source-bucket"
+# ID-s
+
+MOVIES_TABLE = 'videosTable'
+REVIEWS_TABLE = 'reviewsTable'
+SUBSCRIPTIONS_TABLE = 'subscriptionsTable'
+FEEDS_TABLE = 'feedsTable'
+
+SOURCE_BUCKET = 'sourceBucket'
+DESTINATION_BUCKET = 'destinationBucket'
+
+API_GATEWAY = 'moviesApi'
 
 
 class CloudMoviesStack(Stack):
@@ -20,11 +27,11 @@ class CloudMoviesStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
 
-        # Create DynamoDb Table
+        # Create DynamoDB Table
         movies_table = dynamodb.Table(
-            self, DYNAMO_MOVIES_TABLE,
+            self, MOVIES_TABLE,
             partition_key=dynamodb.Attribute(
-                name="id", type=dynamodb.AttributeType.STRING
+                name='id', type=dynamodb.AttributeType.STRING
             ),
             write_capacity=1,
             read_capacity=1
@@ -33,84 +40,49 @@ class CloudMoviesStack(Stack):
 
         # Create S3 source bucket
         source_bucket = s3.Bucket(
-                    self, 'Bucket',
-                    cors=[s3.CorsRule(
-                        allowed_methods=[
-                            s3.HttpMethods.GET,
-                            s3.HttpMethods.PUT,
-                            s3.HttpMethods.POST,
-                            s3.HttpMethods.DELETE
-                        ],
-                        allowed_origins=['*'],  # You can specify more specific origins here
-                        allowed_headers=['*']  # You can specify more specific headers here
-                    )]
-                )
-
-        # IAM Role for Lambda Functions
-        lambda_role = iam.Role(
-            self, "LambdaRole",
-            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com")
-        )
-        lambda_role.add_managed_policy(
-            iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
-        )
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=[
-                    "dynamodb:DescribeTable",
-                    "dynamodb:Query",
-                    "dynamodb:Scan",
-                    "dynamodb:GetItem",
-                    "dynamodb:PutItem",
-                    "dynamodb:UpdateItem",
-                    "dynamodb:DeleteItem",
+            self, SOURCE_BUCKET,
+            cors=[s3.CorsRule(
+                allowed_methods=[
+                    s3.HttpMethods.GET,
+                    s3.HttpMethods.PUT,
+                    s3.HttpMethods.POST,
+                    s3.HttpMethods.DELETE
                 ],
-                resources=[movies_table.table_arn]
-            )
-        )
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=[
-                    "s3:GetObject",
-                    "s3:PutObject",
-                    "s3:PutObjectACL",
-                    "s3:ListBucket"
-                ],
-                resources=[f"{source_bucket.bucket_arn}/*"]
-            )
-        )
-
-        upload_lambda = create_lambda(self, "uploadFile", "uploadFile.upload_file_handler", "lambdas", lambda_role)
-        upload_lambda.add_environment("TABLE_NAME", movies_table.table_name)
-        upload_lambda.add_environment("BUCKET_NAME", source_bucket.bucket_name)
-        source_bucket.grant_put(upload_lambda)
-        source_bucket.grant_put_acl(upload_lambda)
-
-        download_lambda = create_lambda(self, "downloadFile", "downloadFile.download_file_handler", "lambdas", lambda_role)
-        download_lambda.add_environment("TABLE_NAME", movies_table.table_name)
-        download_lambda.add_environment("BUCKET_NAME", source_bucket.bucket_name)
-        source_bucket.grant_read(download_lambda)
-    
-
-
-        handler = create_lambda(self, "handler", "handler.handler", "lambdas", lambda_role)
-
-        # Define the API Gateway resource
-        api = apigateway.LambdaRestApi(
-            self,
-            "moovis",
-            handler = handler
+                allowed_origins=['*'],  # You can specify more specific origins here
+                allowed_headers=['*']  # You can specify more specific headers here
+            )]
         )
         
-        # '/upload' resource with a POST method
-        upload_resource = api.root.add_resource("upload")
+
+        # Create Lambdas
+        upload_lambda = create_lambda(self, 'uploadLambda', 'upload_video', 'upload_video.handler')
+        upload_lambda.add_environment('BUCKET_NAME', source_bucket.bucket_name)
+        source_bucket.grant_put(upload_lambda)
+
+        upload_lambda.add_environment('TABLE_NAME', movies_table.table_name)
+        movies_table.grant_read_write_data(upload_lambda)
+
+
+        download_lambda = create_lambda(self, 'downloadLambda', 'download_video', 'download_video.handler')
+        download_lambda.add_environment('BUCKET_NAME', source_bucket.bucket_name)
+        source_bucket.grant_read(download_lambda)
+
+
+        download_lambda.add_environment('TABLE_NAME', movies_table.table_name)
+        movies_table.grant_read_write_data(download_lambda)
+    
+
+        # Create API Gateway
+        api = apigateway.RestApi(self, API_GATEWAY)
+        
+
+        # POST /upload
+        upload_resource = api.root.add_resource('upload')
         upload_integration = apigateway.LambdaIntegration(upload_lambda)
-        upload_resource.add_method("POST", upload_integration)
+        upload_resource.add_method('POST', upload_integration)
 
 
-        # '/download' resource with a GET method
-        download_resource = api.root.add_resource("download")
-        download_integration = apigateway.LambdaIntegration(download_lambda)  # TODO download handler
-        download_resource.add_method("GET", download_integration)
+        # GET /download
+        download_resource = api.root.add_resource('download')
+        download_integration = apigateway.LambdaIntegration(download_lambda)
+        download_resource.add_method('GET', download_integration)

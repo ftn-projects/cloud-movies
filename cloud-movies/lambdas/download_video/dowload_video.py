@@ -3,11 +3,12 @@ import json
 import boto3
 from botocore.exceptions import ClientError
 
+
 dynamodb_client = boto3.client('dynamodb')
 s3_client = boto3.client('s3', region_name='eu-central-1')
 
 
-def download_file_handler(event, context):
+def handler(event, context):
     table_name = os.getenv('TABLE_NAME')
     bucket_name = os.getenv('BUCKET_NAME')
 
