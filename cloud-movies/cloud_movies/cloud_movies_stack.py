@@ -39,19 +39,7 @@ class CloudMoviesStack(Stack):
 
 
         # Create S3 source bucket
-        source_bucket = s3.Bucket(
-            self, SOURCE_BUCKET,
-            cors=[s3.CorsRule(
-                allowed_methods=[
-                    s3.HttpMethods.GET,
-                    s3.HttpMethods.PUT,
-                    s3.HttpMethods.POST,
-                    s3.HttpMethods.DELETE
-                ],
-                allowed_origins=['*'],  # You can specify more specific origins here
-                allowed_headers=['*']  # You can specify more specific headers here
-            )]
-        )
+        source_bucket = s3.Bucket(self, SOURCE_BUCKET)
         
 
         # Create Lambdas
