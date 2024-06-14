@@ -1,9 +1,7 @@
 import boto3
-from botocore.config import Config
 import uuid
-import os
-
 import json
+import os
 
 
 PRESIGNED_URL_EXPIRATION = 1 * 60 * 60  # hours

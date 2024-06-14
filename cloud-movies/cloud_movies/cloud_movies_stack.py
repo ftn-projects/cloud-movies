@@ -1,5 +1,5 @@
 from constructs import Construct
-from .create_lambda import create_lambda, create_lambda_with_code
+from .create_lambda import create_lambda
 from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
@@ -60,30 +60,23 @@ class CloudMoviesStack(Stack):
         upload_lambda.add_environment('BUCKET_NAME', source_bucket.bucket_name)
         source_bucket.grant_put(upload_lambda)
 
-        upload_lambda.add_environment('TABLE_NAME', movies_table.table_name)
-        movies_table.grant_read_write_data(upload_lambda)
-
-
         download_lambda = create_lambda(self, 'downloadLambda', 'download_video', 'download_video.handler')
         download_lambda.add_environment('BUCKET_NAME', source_bucket.bucket_name)
         source_bucket.grant_read(download_lambda)
 
-
-        download_lambda.add_environment('TABLE_NAME', movies_table.table_name)
-        movies_table.grant_read_write_data(download_lambda)
-    
 
         # Create API Gateway
         api = apigateway.RestApi(self, API_GATEWAY)
         
 
         # GET /uploadurl
-        upload_resource = api.root.add_resource('uploadurl')
         upload_integration = apigateway.LambdaIntegration(upload_lambda)
-        upload_resource.add_method('GET', upload_integration)
+        upload = api.root.add_resource('uploadurl')
+        upload.add_method('GET', upload_integration)
 
 
-        # GET /download
-        download_resource = api.root.add_resource('download')
+        # GET /download/{video_file}
+        # TODO communicate with DynamoDB where video_file should be associated with video uuid
         download_integration = apigateway.LambdaIntegration(download_lambda)
-        download_resource.add_method('GET', download_integration)
+        download = api.root.add_resource('download').add_resource('{video_file}')
+        download.add_method('GET', download_integration)
