@@ -39,7 +39,20 @@ class CloudMoviesStack(Stack):
 
 
         # Create S3 source bucket
-        source_bucket = s3.Bucket(self, SOURCE_BUCKET)
+        source_bucket = s3.Bucket(
+                    self, SOURCE_BUCKET,
+                    cors=[s3.CorsRule(
+                        allowed_methods=[
+                            s3.HttpMethods.GET,
+                            s3.HttpMethods.PUT,
+                            s3.HttpMethods.POST,
+                            s3.HttpMethods.DELETE
+                        ],
+                        allowed_origins=['*'],  # You can specify more specific origins here
+                        allowed_headers=['*']  # You can specify more specific headers here
+                    )],
+                    
+                )
         
 
         # Create Lambdas
@@ -64,10 +77,10 @@ class CloudMoviesStack(Stack):
         api = apigateway.RestApi(self, API_GATEWAY)
         
 
-        # POST /upload
-        upload_resource = api.root.add_resource('upload')
+        # GET /uploadurl
+        upload_resource = api.root.add_resource('uploadurl')
         upload_integration = apigateway.LambdaIntegration(upload_lambda)
-        upload_resource.add_method('POST', upload_integration)
+        upload_resource.add_method('GET', upload_integration)
 
 
         # GET /download
