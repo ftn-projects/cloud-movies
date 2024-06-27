@@ -10,7 +10,7 @@ def handler(event, context):
     table_name = os.getenv('TABLE_NAME')
     table = dynamodb.Table(table_name)
     
-    body = event['pathParameters']
+    body = event['queryStringParameters']
     filters = {}
 
     if 'title' in body:

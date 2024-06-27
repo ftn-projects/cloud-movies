@@ -96,6 +96,18 @@ class CloudMoviesStack(Stack):
         download_lambda.add_environment('BUCKET_NAME', source_bucket.bucket_name)
         source_bucket.grant_read(download_lambda)
 
+        list_videos_lambda = create_lambda(self, 'listVideosLambda', 'list_videos', 'list_videos.handler')
+        list_videos_lambda.add_environment('TABLE_NAME', movies_table.table_name)
+        movies_table.grant_read_data(list_videos_lambda)
+
+        find_video_lambda = create_lambda(self, 'findVideoLambda', 'get_details', 'get_details.handler')
+        find_video_lambda.add_environment('TABLE_NAME', movies_table.table_name)
+        movies_table.grant_read_data(find_video_lambda)
+
+        query_videos_lambda = create_lambda(self, 'queryVideosLambda', 'query_videos', 'query_videos.handler')
+        query_videos_lambda.add_environment('TABLE_NAME', movies_table.table_name)
+        movies_table.grant_read_data(query_videos_lambda)
+
 
         # Create API Gateway
         api = apigateway.RestApi(self, API_GATEWAY)
@@ -112,3 +124,22 @@ class CloudMoviesStack(Stack):
         download_integration = apigateway.LambdaIntegration(download_lambda)
         download = api.root.add_resource('download').add_resource('{video_file}')
         download.add_method('GET', download_integration)
+
+
+        # GET /videos
+        list_videos_integration = apigateway.LambdaIntegration(list_videos_lambda)
+        videos_resource = api.root.add_resource('videos')
+        videos_resource.add_method('GET', list_videos_integration)
+
+
+        # GET /videos/{video_id}
+        find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
+        find_video = videos_resource.add_resource('{video_id}')
+        find_video.add_method('GET', find_video_integration)
+
+
+        # GET /videos/query
+        query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)
+        query_videos = videos_resource.add_resource('query')
+        query_videos.add_method('GET', query_videos_integration)
+
