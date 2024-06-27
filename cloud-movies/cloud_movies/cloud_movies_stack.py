@@ -4,7 +4,8 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
     aws_s3 as s3,
-    Stack,
+    RemovalPolicy,
+    Stack
 )
 
 
@@ -33,10 +34,41 @@ class CloudMoviesStack(Stack):
             partition_key=dynamodb.Attribute(
                 name='id', type=dynamodb.AttributeType.STRING
             ),
-            write_capacity=1,
-            read_capacity=1
+            sort_key=dynamodb.Attribute(
+                name='title', type=dynamodb.AttributeType.STRING
+            ),
+            removal_policy=RemovalPolicy.DESTROY,
         )
-
+        movies_table.add_global_secondary_index(
+            index_name='titleIndex',
+            partition_key=dynamodb.Attribute(
+                name='title', type=dynamodb.AttributeType.STRING
+            )
+        )
+        movies_table.add_global_secondary_index(
+            index_name='descriptionIndex',
+            partition_key=dynamodb.Attribute(
+                name='description', type=dynamodb.AttributeType.STRING
+            )
+        )
+        movies_table.add_global_secondary_index(
+            index_name='actorsIndex',
+            partition_key=dynamodb.Attribute(
+                name='actors', type=dynamodb.AttributeType.STRING
+            )
+        )
+        movies_table.add_global_secondary_index(
+            index_name='directorsIndex',
+            partition_key=dynamodb.Attribute(
+                name='directors', type=dynamodb.AttributeType.STRING
+            )
+        )
+        movies_table.add_global_secondary_index(
+            index_name='genresIndex',
+            partition_key=dynamodb.Attribute(
+                name='genres', type=dynamodb.AttributeType.STRING
+            )
+        )
 
         # Create S3 source bucket
         source_bucket = s3.Bucket(
