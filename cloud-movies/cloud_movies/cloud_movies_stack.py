@@ -11,7 +11,7 @@ from aws_cdk import (
 
 # ID-s
 
-MOVIES_TABLE = 'videosTable'
+VIDEOS_TABLE = 'videosTable'
 REVIEWS_TABLE = 'reviewsTable'
 SUBSCRIPTIONS_TABLE = 'subscriptionsTable'
 FEEDS_TABLE = 'feedsTable'
@@ -29,45 +29,50 @@ class CloudMoviesStack(Stack):
 
 
         # Create DynamoDB Table
-        movies_table = dynamodb.Table(
-            self, MOVIES_TABLE,
+        videos_table = dynamodb.Table(
+            self, VIDEOS_TABLE,
             partition_key=dynamodb.Attribute(
                 name='id', type=dynamodb.AttributeType.STRING
             ),
-            sort_key=dynamodb.Attribute(
-                name='title', type=dynamodb.AttributeType.STRING
-            ),
             removal_policy=RemovalPolicy.DESTROY,
         )
-        movies_table.add_global_secondary_index(
+        videos_table.add_global_secondary_index(
             index_name='titleIndex',
             partition_key=dynamodb.Attribute(
                 name='title', type=dynamodb.AttributeType.STRING
             )
         )
-        movies_table.add_global_secondary_index(
+        videos_table.add_global_secondary_index(
             index_name='descriptionIndex',
             partition_key=dynamodb.Attribute(
                 name='description', type=dynamodb.AttributeType.STRING
             )
         )
-        movies_table.add_global_secondary_index(
+        videos_table.add_global_secondary_index(
             index_name='actorsIndex',
             partition_key=dynamodb.Attribute(
                 name='actors', type=dynamodb.AttributeType.STRING
             )
         )
-        movies_table.add_global_secondary_index(
+        videos_table.add_global_secondary_index(
             index_name='directorsIndex',
             partition_key=dynamodb.Attribute(
                 name='directors', type=dynamodb.AttributeType.STRING
             )
         )
-        movies_table.add_global_secondary_index(
+        videos_table.add_global_secondary_index(
             index_name='genresIndex',
             partition_key=dynamodb.Attribute(
                 name='genres', type=dynamodb.AttributeType.STRING
             )
+        )
+
+        subscriptions_table = dynamodb.Table(
+            self, SUBSCRIPTIONS_TABLE,
+            partition_key=dynamodb.Attribute(
+                name='id', type=dynamodb.AttributeType.STRING
+            ),
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
         # Create S3 source bucket
@@ -94,19 +99,25 @@ class CloudMoviesStack(Stack):
 
         download_lambda = create_lambda(self, 'downloadLambda', 'download_video', 'download_video.handler')
         download_lambda.add_environment('BUCKET_NAME', source_bucket.bucket_name)
+        download_lambda.add_environment('TABLE_NAME', videos_table.table_name)
         source_bucket.grant_read(download_lambda)
+        videos_table.grant_read_data(download_lambda)
 
         list_videos_lambda = create_lambda(self, 'listVideosLambda', 'list_videos', 'list_videos.handler')
-        list_videos_lambda.add_environment('TABLE_NAME', movies_table.table_name)
-        movies_table.grant_read_data(list_videos_lambda)
+        list_videos_lambda.add_environment('TABLE_NAME', videos_table.table_name)
+        videos_table.grant_read_data(list_videos_lambda)
 
         find_video_lambda = create_lambda(self, 'findVideoLambda', 'get_details', 'get_details.handler')
-        find_video_lambda.add_environment('TABLE_NAME', movies_table.table_name)
-        movies_table.grant_read_data(find_video_lambda)
+        find_video_lambda.add_environment('TABLE_NAME', videos_table.table_name)
+        videos_table.grant_read_data(find_video_lambda)
 
         query_videos_lambda = create_lambda(self, 'queryVideosLambda', 'query_videos', 'query_videos.handler')
-        query_videos_lambda.add_environment('TABLE_NAME', movies_table.table_name)
-        movies_table.grant_read_data(query_videos_lambda)
+        query_videos_lambda.add_environment('TABLE_NAME', videos_table.table_name)
+        videos_table.grant_read_data(query_videos_lambda)
+
+        list_subscriptions_lambda = create_lambda(self, 'listSubscriptionsLambda', 'list_subscriptions', 'list_subscriptions.handler')
+        list_subscriptions_lambda.add_environment('TABLE_NAME', subscriptions_table.table_name)
+        subscriptions_table.grant_read_data(list_subscriptions_lambda)
 
 
         # Create API Gateway
@@ -115,31 +126,34 @@ class CloudMoviesStack(Stack):
 
         # GET /uploadurl
         upload_integration = apigateway.LambdaIntegration(upload_lambda)
-        upload = api.root.add_resource('uploadurl')
-        upload.add_method('GET', upload_integration)
+        api.root.add_resource('uploadurl').add_method('GET', upload_integration)
 
 
-        # GET /download/{video_file}
-        # TODO communicate with DynamoDB where video_file should be associated with video uuid
+        # GET /download/{video_id}
         download_integration = apigateway.LambdaIntegration(download_lambda)
-        download = api.root.add_resource('download').add_resource('{video_file}')
-        download.add_method('GET', download_integration)
+        download_resource = api.root.add_resource('download').add_resource('{video_id}').add_resource('{resolution}')
+        download_resource.add_method('GET', download_integration)
+
+
+        videos_resource = api.root.add_resource('videos')
+        subscriptions_resource = api.root.add_resource('subscriptions')
 
 
         # GET /videos
         list_videos_integration = apigateway.LambdaIntegration(list_videos_lambda)
-        videos_resource = api.root.add_resource('videos')
         videos_resource.add_method('GET', list_videos_integration)
 
 
         # GET /videos/{video_id}
         find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
-        find_video = videos_resource.add_resource('{video_id}')
-        find_video.add_method('GET', find_video_integration)
+        videos_resource.add_resource('{video_id}').add_method('GET', find_video_integration)
 
 
         # GET /videos/query
         query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)
-        query_videos = videos_resource.add_resource('query')
-        query_videos.add_method('GET', query_videos_integration)
+        videos_resource.add_resource('query').add_method('GET', query_videos_integration)
 
+
+        # GET /subscriptions
+        list_subscriptions_integration = apigateway.LambdaIntegration(list_subscriptions_lambda)
+        subscriptions_resource.add_method('GET', list_subscriptions_integration)
