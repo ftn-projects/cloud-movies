@@ -5,6 +5,9 @@ from aws_cdk import (
     aws_dynamodb as dynamodb,
     aws_s3 as s3,
     RemovalPolicy,
+    aws_cognito,
+    aws_iam,
+    CfnOutput,
     Stack
 )
 
@@ -21,11 +24,146 @@ DESTINATION_BUCKET = 'destinationBucket'
 
 API_GATEWAY = 'moviesApi'
 
+USER_POOL = 'moviesUserPool'
+CLIENT_NAME = 'movies-client'
+DOMAIN_NAME = 'movies-app-123456789'
+
+USER_ROLE = 'UserRole'
+ADMIN_ROLE = 'AdminRole'
+
+USER_GROUP = 'UserGroup'
+ADMIN_GROUP = 'AdminGroup'
 
 class CloudMoviesStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        
+        attach_role_lambda = create_lambda(self, 'attachUserRole', 'attach_role', 'user_role.handler')
+        
+        # Creates User Pool
+        pool = aws_cognito.UserPool(
+            self, USER_POOL,
+            sign_in_case_sensitive=False,
+            self_sign_up_enabled=True,
+            user_verification=aws_cognito.UserVerificationConfig(
+                email_subject="Verify Your Email Address for movies-app",
+                email_body="""
+                Thank you for registering with Movies-app. To complete your registration, please verify your email address by clicking {##here##}. \n\n
+                If you did not register for Movies-app, please ignore this email.\n\n
+                Thank you,\n
+                Movies-app Team\n""",
+                email_style=aws_cognito.VerificationEmailStyle.LINK
+            ),
+            sign_in_aliases=aws_cognito.SignInAliases(
+                username=True,
+                email=True
+                ),
+            auto_verify=aws_cognito.AutoVerifiedAttrs(
+                email=True
+                ),
+            standard_attributes=aws_cognito.StandardAttributes(
+                birthdate=aws_cognito.StandardAttribute(
+                    required=True,
+                    mutable=False
+                ),
+                given_name=aws_cognito.StandardAttribute(
+                    required=True,
+                    mutable=False
+                ),
+                family_name=aws_cognito.StandardAttribute(
+                    required=True,
+                    mutable=False
+                ),
+                email=aws_cognito.StandardAttribute(
+                    required=True,
+                    mutable=False
+                )
+            ),
+            lambda_triggers=aws_cognito.UserPoolTriggers(
+                post_confirmation=attach_role_lambda
+            ) 
+        )
+
+        pool_domain = pool.add_domain(
+            "CognitoDomain", 
+            cognito_domain=aws_cognito.CognitoDomainOptions(
+             domain_prefix=DOMAIN_NAME
+            )   
+        )
+
+        # Creates a client for User Pool
+        client = pool.add_client(
+            CLIENT_NAME,
+            generate_secret=False,
+            auth_flows=aws_cognito.AuthFlow(
+                user_password=True,
+                custom=True,
+                user_srp=True,
+                admin_user_password=True 
+            ),
+            o_auth=aws_cognito.OAuthSettings(
+                flows=aws_cognito.OAuthFlows(
+                    authorization_code_grant=True
+                ),
+                scopes=[aws_cognito.OAuthScope.OPENID],
+            ),
+        )
+
+        user_role = aws_iam.Role(
+            self, USER_ROLE,
+            assumed_by=aws_iam.ServicePrincipal('cognito-idp.amazonaws.com'),
+            managed_policies=[
+                aws_iam.ManagedPolicy.from_aws_managed_policy_name('ReadOnlyAccess')
+            ]
+        )
+
+        admin_role = aws_iam.Role(
+            self, ADMIN_ROLE,
+            assumed_by=aws_iam.ServicePrincipal('cognito-idp.amazonaws.com'),
+            managed_policies=[
+                aws_iam.ManagedPolicy.from_aws_managed_policy_name('AdministratorAccess')
+            ]
+        )
+
+        user_group = aws_cognito.CfnUserPoolGroup(
+            self, USER_GROUP,
+            group_name='User',
+            user_pool_id=pool.user_pool_id,
+        )
+
+        admin_group = aws_cognito.CfnUserPoolGroup(
+            self, ADMIN_GROUP,
+            group_name='Admin',
+            user_pool_id=pool.user_pool_id,
+        )        
+
+        admin_group.role_arn = admin_role.role_arn
+        user_group.role_arn = user_role.role_arn
+
+        
+        attach_role_lambda.role.attach_inline_policy(
+            aws_iam.Policy(self, 'userpool-policy',
+                           statements=[aws_iam.PolicyStatement(
+                               actions=['cognito-idp:AdminAddUserToGroup'],
+                               resources=[pool.user_pool_arn]
+                            )]))
+
+        # attach_role_lambda.add_to_role_policy(
+        #     aws_iam.PolicyStatement(
+        #         actions=['cognito-idp:AdminAddUserToGroup'],
+        #         resources=[pool.user_pool_arn]
+        #     )
+        # )
+
+        # pool.add_trigger(
+        #     aws_cognito.UserPoolOperation.POST_CONFIRMATION,
+        #     attach_role_lambda
+        # )
+        
+        CfnOutput(self, "UserPoolId", value=pool.user_pool_id)
+        CfnOutput(self, "UserPoolClientId", value=client.user_pool_client_id)
+        CfnOutput(self, "UserPoolDomain", value=pool_domain.domain_name)
 
 
         # Create DynamoDB Table
