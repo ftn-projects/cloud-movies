@@ -56,8 +56,8 @@ export class AuthenticationService {
       newPasswordRequired: () => {
         alert("this page is yet to be made")
       },
-      onFailure: (err: any) => {
-        alert("login failed");
+      onFailure: (err) => {
+        alert(err.message);
       }
     });
   }
@@ -122,9 +122,10 @@ export class AuthenticationService {
 
     this.userPool.signUp(username, password, attributeList, [], (err, result)=>{
       if(err){
-        console.log("Registration failed");
+        alert(`Registration failed: ${err.message}`);
       } else {
-        console.log("Registration successful");
+        alert("Registration successful");
+        this.router.navigate(['/login']);
       }
     });
   }
