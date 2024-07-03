@@ -1,1 +1,12 @@
-<div class="home"></div>
+<div class="home">
+  <form class="search-form" (ngSubmit)="onSubmit()">
+    <input type="text" id="search-box" placeholder="Search..." name="search" [(ngModel)]="searchText"/>
+    <button class="search-button" type="submit"><i class="fa fa-search"></i></button>
+  </form>
+
+  <div class="video-list">
+    <app-video-card [videoId]="'1'"></app-video-card>
+    <app-video-card [videoId]="'2'"></app-video-card>
+    <app-video-card [videoId]="'3'"></app-video-card>
+  </div>
+</div>

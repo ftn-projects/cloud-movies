@@ -351,18 +351,6 @@ class CloudMoviesStack(Stack):
                                actions=['cognito-idp:AdminAddUserToGroup'],
                                resources=[pool.user_pool_arn]
                             )]))
-
-        # attach_role_lambda.add_to_role_policy(
-        #     iam.PolicyStatement(
-        #         actions=['cognito-idp:AdminAddUserToGroup'],
-        #         resources=[pool.user_pool_arn]
-        #     )
-        # )
-
-        # pool.add_trigger(
-        #     cognito.UserPoolOperation.POST_CONFIRMATION,
-        #     attach_role_lambda
-        # )
         
         CfnOutput(self, 'UserPoolId', value=pool.user_pool_id)
         CfnOutput(self, 'UserPoolClientId', value=client.user_pool_client_id)

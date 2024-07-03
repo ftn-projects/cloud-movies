@@ -1,0 +1,61 @@
+.video-card {
+  border: 1px black solid;
+  border-radius: 1rem;
+  width: 60%;
+  color: white;
+  transition-duration: 600ms;
+}
+
+.video-card:hover {
+  background-color: #31363F;
+  cursor: pointer;
+  transition-duration: 600ms;
+}
+
+.title-rating {
+  background-color: rgb(95,46,172);
+  color: white;
+  border-radius: 1rem 1rem 0 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+.title {
+  margin: 0;
+}
+
+.rating {
+  margin: 0;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  width: 45%;
+  padding-left: 2.5%;
+}
+
+.right-column {
+ display: flex;
+  flex-direction: column;
+  width: 45%;
+}
+
+.details-holder {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+hr{
+  width: 95%;
+}
+
+
+.description {
+  padding-left: 2.5%;
+}
