@@ -150,6 +150,7 @@ class CloudMoviesStack(Stack):
                 payload=sfn.TaskInput.from_object({
                     'resolution': resolution,
                     'objectKey.$': '$.objectKey',
+                    'timestamp.$': '$.timestamp'
                 }),
             ).add_retry(
                 max_attempts=3,
