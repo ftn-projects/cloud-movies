@@ -7,7 +7,7 @@ from boto3.dynamodb.conditions import Attr
 def handler(event, context):
     dynamodb = boto3.resource('dynamodb')
     
-    table_name = os.getenv('TABLE_NAME')
+    table_name = os.getenv('VIDEOS_TABLE')
     table = dynamodb.Table(table_name)
     
     body = event['queryStringParameters']

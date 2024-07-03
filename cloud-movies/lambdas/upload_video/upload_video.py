@@ -9,7 +9,7 @@ PRESIGNED_URL_EXPIRATION = 1 * 60 * 60  # hours
 
 def handler(event, context):
     s3_client = boto3.client('s3')
-    bucket_name = os.environ['BUCKET_NAME']
+    bucket_name = os.environ['SOURCE_BUCKET']
     
     video_uuid = str(uuid.uuid4())  # will be used in dynamodb
 
