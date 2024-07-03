@@ -4,14 +4,15 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
     aws_s3 as s3,
+    aws_stepfunctions_tasks as sfn_tasks,
+    aws_stepfunctions as sfn,
+    aws_lambda_event_sources as lambda_event_sources,
     aws_events_targets as targets,
     aws_events as events,
     aws_sns_subscriptions as subscriptions,
     aws_sns as sns,
     aws_cognito as cognito,
     aws_iam as iam,
-    aws_cloudwatch_actions as cloudwatch_actions,
-    aws_cloudwatch as cloudwatch,
     RemovalPolicy,
     CfnOutput,
     Duration,
@@ -46,6 +47,8 @@ ADMIN_GROUP = 'AdminGroup'
 VIDEOS_TABLE_GSI = ['table', 'description', 'actors', 'directors', 'genres']
 VIDEO_EXTENSIONS = ['mp4', 'mov', 'm4v']
 VIDEO_RESOLUTIONS = ['360', '480', '720']
+
+ADMIN_EMAIL = 'dimitrije.gasic.02@gmail.com'
 
 
 class CloudMoviesStack(Stack):
@@ -88,7 +91,14 @@ class CloudMoviesStack(Stack):
         )
         self.source_bucket = s3.Bucket(self, SOURCE_BUCKET, cors=[cors_allow_all])
         self.publish_bucket = s3.Bucket(self, PUBLISH_BUCKET, cors=[cors_allow_all])
+        
+        
+        self.failed_source_processing_topic = sns.Topic(self, 'failedSourceBucketProcessingTopic')
+        self.failed_source_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
+        # failed_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_source_lambda))
 
+        self.successful_transcoding_topic = sns.Topic(self, 'successfulVideoTranscodingTopic')
+        self.successful_transcoding_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
 
         self.__create_source_object_upload_handlers()
         self.__create_api_gateway()
@@ -100,65 +110,67 @@ class CloudMoviesStack(Stack):
         unzip_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         self.source_bucket.grant_read_write(unzip_lambda)
 
+        unzip_lambda.add_event_source(lambda_event_sources.S3EventSource(
+            bucket=self.source_bucket,
+            events=[s3.EventType.OBJECT_CREATED],
+            filters=[{'suffix': '.zip'}]
+        ))
+
         transcode_lambda = create_lambda(self, 'transcodeVideoLambda', 'transcode_video', 'transcode_video.handler')
         transcode_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         transcode_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         self.source_bucket.grant_read(transcode_lambda)
         self.publish_bucket.grant_write(transcode_lambda)
-
-        get_event_pattern = lambda extensions: {
-            'source': ['aws.s3'],
-            'detail_type': ['Object Created'],
-            'detail': {
-                'bucket': {
-                    'name': [self.source_bucket.bucket_name],
-                },
-                'object': {
-                    'key': [{'suffix': f'.{e}'} for e in extensions]
-                },
-            },
-        }
-
-        zip_event_rule = events.Rule(
-            self, 'zipSourceUploadEventRule',
-            rule_name='zip-s3-source-event-rule',
-            event_pattern=get_event_pattern(['zip'])
-        )
-        video_event_rule = events.Rule(
-            self, 'videoSourceUploadEventRule',
-            rule_name='video-s3-source-event-rule',
-            event_pattern=get_event_pattern(VIDEO_EXTENSIONS)
-        )
-
-        zip_event_rule.add_target(targets.LambdaFunction(
-            unzip_lambda,
-            event=events.RuleTargetInput.from_object({
-                'object_key': events.EventField.from_path('$.Records[0].s3.object.key'),
+        
+        success_publish = sfn_tasks.SnsPublish(
+            self, 'publishSuccessfulTranscoding',
+            topic=self.successful_transcoding_topic,
+            message=sfn.TaskInput.from_object({
+                'message': 'Transcoding successful',
+                'objectKey.$': '$.objectKey'
             })
-        ))
+        )
+        failed_publish = sfn_tasks.SnsPublish(
+            self, 'publishFailedTranscoding',
+            topic=self.failed_source_processing_topic,
+            message=sfn.TaskInput.from_object({
+                'message': 'Transcoding failed',
+                'objectKey.$': '$.objectKey'
+            })
+        )
+        self.successful_transcoding_topic.grant_publish(transcode_lambda)
+        self.failed_source_processing_topic.grant_publish(transcode_lambda)
+
+        parallel = sfn.Parallel(self, 'parallelTranscoding')
+        parallel.add_catch(failed_publish)
         for resolution in VIDEO_RESOLUTIONS:
-            video_event_rule.add_target(targets.LambdaFunction(
-                transcode_lambda,
-                event=events.RuleTargetInput.from_object({
+            parallel.branch(sfn_tasks.LambdaInvoke(
+                self, f'transcoding{resolution}',
+                lambda_function=transcode_lambda,
+                payload=sfn.TaskInput.from_object({
                     'resolution': resolution,
-                    'object_key': events.EventField.from_path('$.Records[0].s3.object.key'),
-                })
+                    'objectKey.$': '$.objectKey',
+                }),
+            ).add_retry(
+                max_attempts=3,
+                backoff_rate=2
             ))
 
-        failed_topic = sns.Topic(self, 'failedSourceBucketUploadTopic')
-        failed_topic.add_subscription(subscriptions.EmailSubscription('dimitrije.gasic.02@gmail.com'))
-        # failed_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_source_lambda))
-
-        sns_action = cloudwatch_actions.SnsAction(failed_topic)
-        create_alarm = lambda id, lambda_function: cloudwatch.Alarm(
-            self, id,
-            metric=lambda_function.metric_errors(),
-            threshold=1,
-            evaluation_periods=1,
-            alarm_description='Alarm for source bucket file upload handling errors',
+        state_machine = sfn.StateMachine(
+            self, 'transcodingStateMachine', 
+            definition_body=sfn.DefinitionBody.from_chainable(parallel.next(success_publish))
         )
-        create_alarm('unzipVideoLambdaAlarm', unzip_lambda).add_alarm_action(sns_action)
-        create_alarm('transcodeVideoLambdaAlarm', transcode_lambda).add_alarm_action(sns_action)
+
+        start_transcoding_lambda = create_lambda(self, 'startTranscodingLambda', 'start_transcoding', 'start_transcoding.handler')
+        start_transcoding_lambda.add_environment('TRANSCODING_STATE_MACHINE', state_machine.state_machine_arn)
+        state_machine.grant_start_execution(start_transcoding_lambda)
+
+        for extension in VIDEO_EXTENSIONS:
+            start_transcoding_lambda.add_event_source(lambda_event_sources.S3EventSource(
+                bucket=self.source_bucket,
+                events=[s3.EventType.OBJECT_CREATED],
+                filters=[{'suffix': extension}]
+            ))
 
 
     def __create_api_gateway(self) -> apigateway.RestApi:
