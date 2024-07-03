@@ -1,0 +1,55 @@
+<div class="container">
+    <div class="player-tv-show">
+      <video
+        controls>
+      </video>
+      <div class="tv-show" *ngIf="true">
+        <h2>Select Season</h2>
+        <mat-form-field>
+          <mat-label>Season</mat-label>
+          <mat-select>
+            <mat-option [value]="1">1</mat-option>
+            <mat-option [value]="2">2</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <h2>Select Episode</h2>
+        <ul class="episodes">
+          <li class="episode">1. Pilot</li>
+          <li class="episode">2. Paternity</li>
+          <li class="episode">3. Some other thingy</li>
+          <li class="episode">4. Name</li>
+        </ul>
+      </div>
+  </div>
+    <div class="details">
+      <h1 class="title">Something goes here</h1>
+      <hr style="width: 100%;">
+      <h2>Description</h2>
+      <p class="description">Some description of a movie or tv show goes here I hope this will be helpful</p>
+      <h2>Actors</h2>
+      <ul class="actors">
+        <li>Pera Peric</li>
+        <li>Djura Djuric</li>
+      </ul>
+      <h2>Genre</h2>
+      <ul class="genre">
+        <li>Horror</li>
+        <li>Action</li>
+      </ul>
+      <h2>Directors</h2>
+      <ul class="directors">
+        <li>Some Director</li>
+        <li>Some Other Director</li>
+      </ul>
+      <div class="button-holder">
+        <button class="button download-button" mat-raised-button>Download</button>
+        <div class="admin-button-holder">
+          <button class="button" mat-raised-button>Edit</button>
+          <button class="button" mat-raised-button>Delete</button>
+        </div>
+      </div>
+    </div>
+  <div class="rating">
+    <h1>Rating</h1>
+  </div>
+</div>

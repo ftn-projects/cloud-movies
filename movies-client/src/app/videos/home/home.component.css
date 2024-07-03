@@ -1,4 +1,45 @@
 .home {
   background-color: #222831;
-  height: 100vh;
+  padding-top: 15vh;
+  padding-bottom: 5vh;
+  display: block;
 }
+
+.search-form {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: stretch;
+  margin-bottom: 3rem;
+}
+
+#search-box {
+  width: 40%;
+  border-radius: 1rem 0 0 1rem;
+  min-height: 2.5rem;
+  padding-left: 1rem;
+  border: none;
+}
+
+.search-button {
+  min-width: 3rem;
+  border-radius: 0 1rem 1rem 0;
+  border:none;
+}
+
+.video-list {
+  margin-bottom: 50px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+app-video-card {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
