@@ -106,21 +106,21 @@ class CloudMoviesStack(Stack):
         self.publish_bucket.grant_write(transcode_lambda)
 
         get_event_pattern = lambda extensions: {
-            "source": ["aws.s3"],
-            "detail-type": ["Object Created"],
-            "detail": {
-                "bucket": {
-                    "name": [self.source_bucket.bucket_name],
+            'source': ['aws.s3'],
+            'detail-type': ['Object Created'],
+            'detail': {
+                'bucket': {
+                    'name': [self.source_bucket.bucket_name],
                 },
-                "object": {
-                    "key": [{'suffix': f'.{e}'} for e in extensions]
+                'object': {
+                    'key': [{'suffix': f'.{e}'} for e in extensions]
                 },
             },
         }
 
         zip_event_rule = events.Rule(
             self, 'zipSourceUploadEventRule',
-            rule_name="zip-s3-source-event-rule",
+            rule_name='zip-s3-source-event-rule',
             event_pattern=get_event_pattern(['zip'])
         )
         video_event_rule = events.Rule(
@@ -129,21 +129,23 @@ class CloudMoviesStack(Stack):
             event_pattern=get_event_pattern(VIDEO_EXTENSIONS)
         )
 
-        zip_event_rule.add_target(targets.LambdaFunction(unzip_lambda))
-
+        zip_event_rule.add_target(targets.LambdaFunction(
+            unzip_lambda,
+            event=events.RuleTargetInput.from_object({
+                'object_key': events.EventField.from_path('$.Records[0].s3.object.key'),
+            })
+        ))
         for resolution in VIDEO_RESOLUTIONS:
-            video_event_rule.add_target(
-                targets.LambdaFunction(
-                    transcode_lambda,
-                    event=events.RuleTargetInput.from_object({
-                        "resolution": resolution,
-                        "detail": events.EventField.from_path("$.detail")
-                    })
-                )
-            )
+            video_event_rule.add_target(targets.LambdaFunction(
+                transcode_lambda,
+                event=events.RuleTargetInput.from_object({
+                    'resolution': resolution,
+                    'object_key': events.EventField.from_path('$.Records[0].s3.object.key'),
+                })
+            ))
 
         failed_topic = sns.Topic(self, 'failedSourceBucketUploadTopic')
-        failed_topic.add_subscription(subscriptions.EmailSubscription('aaa@gmail.com'))
+        failed_topic.add_subscription(subscriptions.EmailSubscription('dimitrije.gasic.02@gmail.com'))
         # failed_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_source_lambda))
 
         create_alarm = lambda id, lambda_function: cloudwatch.Alarm(
@@ -151,7 +153,7 @@ class CloudMoviesStack(Stack):
             metric=lambda_function.metric_errors(),
             threshold=1,
             evaluation_periods=1,
-            alarm_description="Alarm for source bucket file upload handling errors",
+            alarm_description='Alarm for source bucket file upload handling errors',
             alarm_actions=[failed_topic.topic_arn]
         ) 
         create_alarm('unzipVideoLambdaAlarm', unzip_lambda)
@@ -227,7 +229,7 @@ class CloudMoviesStack(Stack):
             sign_in_case_sensitive=False,
             self_sign_up_enabled=True,
             user_verification=cognito.UserVerificationConfig(
-                email_subject="Verify Your Email Address for movies-app",
+                email_subject='Verify Your Email Address for movies-app',
                 email_body="""
                 Thank you for registering with Movies-app. To complete your registration, please verify your email address by clicking {##here##}. \n\n
                 If you did not register for Movies-app, please ignore this email.\n\n
@@ -266,7 +268,7 @@ class CloudMoviesStack(Stack):
         )
 
         pool_domain = pool.add_domain(
-            "CognitoDomain", 
+            'CognitoDomain', 
             cognito_domain=cognito.CognitoDomainOptions(
              domain_prefix=DOMAIN_NAME
             )   
@@ -341,8 +343,8 @@ class CloudMoviesStack(Stack):
         #     attach_role_lambda
         # )
         
-        CfnOutput(self, "UserPoolId", value=pool.user_pool_id)
-        CfnOutput(self, "UserPoolClientId", value=client.user_pool_client_id)
-        CfnOutput(self, "UserPoolDomain", value=pool_domain.domain_name)
+        CfnOutput(self, 'UserPoolId', value=pool.user_pool_id)
+        CfnOutput(self, 'UserPoolClientId', value=client.user_pool_client_id)
+        CfnOutput(self, 'UserPoolDomain', value=pool_domain.domain_name)
 
         return pool
