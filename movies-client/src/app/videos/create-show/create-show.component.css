@@ -1,0 +1,38 @@
+.create-show{
+    background-color: #222831;
+    padding-top: 10vh;
+    height: 100%;
+}
+
+.create{
+    border: 2px solid white;
+    height: fit-content;
+    width: 40%;
+    border-radius: 5%;
+    margin: auto;
+    box-shadow: 10px 10px #171a1f;
+    padding-bottom: 5vh;
+}
+
+.showForm{
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+    margin: auto;
+    margin-top: 10%;
+}
+
+.page-title{
+    color: white;
+    font-weight: bold;
+    font-size: 5vh;
+    padding-left: 5vh;
+    padding-top: 5vh;
+}
+
+.inputButton{
+    font-size: large;
+    padding: 2vh 5vh 2vh 5vh;
+    margin-left: 70%;
+    margin-top: 5%;
+}

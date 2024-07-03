@@ -6,13 +6,14 @@ import {MaterialModule} from "../material/material.module";
 import {FormsModule, ReactiveFormsModule} from "@angular/forms";
 import { VideoCardComponent } from './video-card/video-card.component';
 import {RouterLink} from "@angular/router";
-
+import { CreateShowComponent } from './create-show/create-show.component';
 
 @NgModule({
   declarations: [
     HomeComponent,
     VideoDetailsComponent,
-    VideoCardComponent
+    VideoCardComponent,
+    CreateShowComponent
   ],
   imports: [
     CommonModule,

@@ -10,8 +10,8 @@ def handler(event, context):
     dynamo = boto3.resource('dynamodb')
     s3 = boto3.client('s3')
 
-    table_name = os.getenv('TABLE_NAME')
-    bucket_name = os.getenv('BUCKET_NAME')
+    table_name = os.getenv('VIDEOS_TABLE')
+    bucket_name = os.getenv('SOURCE_BUCKET')
 
     video_id = event['pathParameters']['video_id']
     resolution = event['pathParameters']['resolution']
