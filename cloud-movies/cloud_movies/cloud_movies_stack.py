@@ -10,6 +10,7 @@ from aws_cdk import (
     aws_sns as sns,
     aws_cognito as cognito,
     aws_iam as iam,
+    aws_cloudwatch_actions as cloudwatch_actions,
     aws_cloudwatch as cloudwatch,
     RemovalPolicy,
     CfnOutput,
@@ -100,14 +101,14 @@ class CloudMoviesStack(Stack):
         self.source_bucket.grant_read_write(unzip_lambda)
 
         transcode_lambda = create_lambda(self, 'transcodeVideoLambda', 'transcode_video', 'transcode_video.handler')
-        transcode_lambda.add_environment('self.source_bucket', self.source_bucket.bucket_name)
+        transcode_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         transcode_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         self.source_bucket.grant_read(transcode_lambda)
         self.publish_bucket.grant_write(transcode_lambda)
 
         get_event_pattern = lambda extensions: {
             'source': ['aws.s3'],
-            'detail-type': ['Object Created'],
+            'detail_type': ['Object Created'],
             'detail': {
                 'bucket': {
                     'name': [self.source_bucket.bucket_name],
@@ -148,16 +149,16 @@ class CloudMoviesStack(Stack):
         failed_topic.add_subscription(subscriptions.EmailSubscription('dimitrije.gasic.02@gmail.com'))
         # failed_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_source_lambda))
 
+        sns_action = cloudwatch_actions.SnsAction(failed_topic)
         create_alarm = lambda id, lambda_function: cloudwatch.Alarm(
             self, id,
             metric=lambda_function.metric_errors(),
             threshold=1,
             evaluation_periods=1,
             alarm_description='Alarm for source bucket file upload handling errors',
-            alarm_actions=[failed_topic.topic_arn]
-        ) 
-        create_alarm('unzipVideoLambdaAlarm', unzip_lambda)
-        create_alarm('transcodeVideoLambdaAlarm', transcode_lambda)
+        )
+        create_alarm('unzipVideoLambdaAlarm', unzip_lambda).add_alarm_action(sns_action)
+        create_alarm('transcodeVideoLambdaAlarm', transcode_lambda).add_alarm_action(sns_action)
 
 
     def __create_api_gateway(self) -> apigateway.RestApi:
