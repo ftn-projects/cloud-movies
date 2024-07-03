@@ -44,7 +44,7 @@ USER_GROUP = 'UserGroup'
 ADMIN_GROUP = 'AdminGroup'
 
 
-VIDEOS_TABLE_GSI = ['table', 'description', 'actors', 'directors', 'genres']
+VIDEOS_TABLE_GSI = ['title', 'description', 'actors', 'directors', 'genres']
 VIDEO_EXTENSIONS = ['mp4', 'mov', 'm4v']
 VIDEO_RESOLUTIONS = ['360', '480', '720']
 
@@ -60,9 +60,12 @@ class CloudMoviesStack(Stack):
         self.videos_table = dynamodb.Table(
             self, VIDEOS_TABLE,
             partition_key=dynamodb.Attribute(
-                name='id', type=dynamodb.AttributeType.STRING
+                name='videoId', type=dynamodb.AttributeType.STRING
             ),
-            removal_policy=RemovalPolicy.DESTROY,
+            sort_key=dynamodb.Attribute(
+                name='videoType', type=dynamodb.AttributeType.STRING
+            ),
+            removal_policy=RemovalPolicy.DESTROY
         )
         for index in VIDEOS_TABLE_GSI:
             self.videos_table.add_global_secondary_index(
@@ -75,7 +78,7 @@ class CloudMoviesStack(Stack):
             partition_key=dynamodb.Attribute(
                 name='id', type=dynamodb.AttributeType.STRING
             ),
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=RemovalPolicy.DESTROY
         )
 
         # S3 Buckets
@@ -107,8 +110,12 @@ class CloudMoviesStack(Stack):
 
     def __create_source_object_upload_handlers(self) -> None:
         unzip_lambda = create_lambda(self, 'unzipVideoLambda', 'unzip_video', 'unzip_video.handler')
-        unzip_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
+        unzip_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
+        unzip_lambda.add_environment('EXTENSIONS', ','.join(VIDEO_EXTENSIONS))
+        unzip_lambda.add_environment('FAILED_TOPIC_ARN', self.failed_source_processing_topic.topic_arn)
+        self.videos_table.grant_write_data(unzip_lambda)
         self.source_bucket.grant_read_write(unzip_lambda)
+        self.failed_source_processing_topic.grant_publish(unzip_lambda)
 
         unzip_lambda.add_event_source(lambda_event_sources.S3EventSource(
             bucket=self.source_bucket,
@@ -127,7 +134,7 @@ class CloudMoviesStack(Stack):
             topic=self.successful_transcoding_topic,
             message=sfn.TaskInput.from_object({
                 'message': 'Transcoding successful',
-                'objectKey.$': '$.objectKey'
+                'objectKey.$': '$.[0].Payload.statusCode'
             })
         )
         failed_publish = sfn_tasks.SnsPublish(
