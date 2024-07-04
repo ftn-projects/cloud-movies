@@ -20,7 +20,7 @@ def handler(event, context):
 
     if extension not in VIDEO_EXTENSIONS:
         print(f'Cannot transcode {extension} files')
-        raise Exception(f'{partition_key}_{sort_key}_{timestamp}')
+        raise Exception(f'{partition_key}_{sort_key}_{timestamp}_{extension}')
 
     try:
         if not os.path.isdir(f'/tmp/{resolution}'):
@@ -35,14 +35,14 @@ def handler(event, context):
 
     except Exception as e:
         print(f"Exception {str(e)}")
-        raise Exception(f'{partition_key}_{sort_key}_{timestamp}')
+        raise Exception(f'{partition_key}_{sort_key}_{timestamp}_{extension}')
 
     finally:
         os.remove(f'/tmp/{resolution}/{object_key}')
         os.remove(f'/tmp/{resolution}/{new_key}')
 
     return {
-        'objectKey': f'{partition_key}_{sort_key}_{timestamp}'
+        'objectKey': f'{partition_key}_{sort_key}_{timestamp}_{extension}'
     }
 
 

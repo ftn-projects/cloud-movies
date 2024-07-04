@@ -9,6 +9,7 @@ dynamodb = boto3.resource('dynamodb')
 
 def handler(event, context):
     publish_bucket = os.environ['PUBLISH_BUCKET']
+    source_bucket = os.environ['SOURCE_BUCKET']
     videos_table = os.environ['VIDEOS_TABLE']
     resolutions = os.environ['RESOLUTIONS'].split(',')
 
@@ -18,9 +19,9 @@ def handler(event, context):
 
     if info['success'] == True: object_key = info['objectKey']
     else: object_key = json.loads(info['error'])['errorMessage']
-    primary_key, sort_key, timestamp = object_key.split('_')
+    primary_key, sort_key, timestamp, extension = object_key.split('_')
+    source_key = f'{primary_key}_{sort_key}.{extension}'
     publish_key = f'{primary_key}_{sort_key}_{timestamp}'
-
 
     objects = {}
     for res in resolutions:
@@ -37,6 +38,8 @@ def handler(event, context):
             }}
         )
     else:
-        for obj in objects.values(): obj.delete()
         table = dynamodb.Table(videos_table)
         table.delete_item(Key={'videoId': primary_key, 'videoType': sort_key})
+        for obj in objects.values(): obj.delete()
+
+    s3_client.Object(source_bucket, source_key).delete()
