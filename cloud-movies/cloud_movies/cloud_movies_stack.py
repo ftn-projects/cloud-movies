@@ -231,9 +231,9 @@ class CloudMoviesStack(Stack):
         upload_integration = apigateway.LambdaIntegration(upload_lambda)
         api.root.add_resource('uploadurl').add_method('GET', upload_integration)
 
-        # GET /download/{videoId}/{videoType}/{resolution}
+        # GET /download/{videoId}?resolution={resolution}&season={season}&episode={episode}
         download_integration = apigateway.LambdaIntegration(download_lambda)
-        download_resource = api.root.add_resource('download').add_resource('{videoId}').add_resource('{videoType}').add_resource('{resolution}')
+        download_resource = api.root.add_resource('download').add_resource('{videoId}')
         download_resource.add_method('GET', download_integration)
 
         videos_resource = api.root.add_resource('videos')
@@ -243,9 +243,9 @@ class CloudMoviesStack(Stack):
         list_videos_integration = apigateway.LambdaIntegration(list_videos_lambda)
         videos_resource.add_method('GET', list_videos_integration)
 
-        # GET /videos/{videoId}/{videoType}
+        # GET /videos/{videoId}?season={season}&episode={episode}
         find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
-        videos_resource.add_resource('{videoId}').add_resource('{videoType}').add_method('GET', find_video_integration)
+        videos_resource.add_resource('{videoId}').add_method('GET', find_video_integration)
 
         # GET /videos/query
         query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)
