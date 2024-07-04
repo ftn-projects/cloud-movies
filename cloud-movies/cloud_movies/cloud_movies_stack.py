@@ -142,6 +142,7 @@ class CloudMoviesStack(Stack):
             topic=self.source_upload_processing_topic,
             message=sfn.TaskInput.from_object({
                 'success': True,
+                'state': 'transcoding',
                 'objectKey.$': '$.[0].Payload.objectKey'
             })
         )
