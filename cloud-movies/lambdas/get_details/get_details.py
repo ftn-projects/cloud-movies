@@ -9,10 +9,10 @@ def handler(event, context):
     table_name = os.getenv('VIDEOS_TABLE')
     table = dynamodb.Table(table_name)
     
-    item_id = json.loads(event['pathParameters']['video_id'])
+    video_id = json.loads(event['pathParameters']['videoId'])
+    video_type = json.loads(event['pathParameters']['videoType'])
     
-    key = {'id': item_id}
-    
+    key = {'videoId': video_id, 'videoType': video_type}
     response = table.get_item(Key=key)
     
     if 'Item' in response:

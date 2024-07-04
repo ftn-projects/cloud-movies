@@ -190,10 +190,9 @@ class CloudMoviesStack(Stack):
 
     def __create_cleanup_video_lambda(self) -> None:
         cleanup_lambda = create_lambda(self, 'cleanupVideoLambda', 'cleanup_video', 'cleanup_video.handler')
-        cleanup_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         cleanup_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
-        self.source_bucket.grant_delete(cleanup_lambda)
+        self.publish_bucket.grant_read(cleanup_lambda)
         self.publish_bucket.grant_delete(cleanup_lambda)
         self.videos_table.grant_read_write_data(cleanup_lambda)
 
@@ -236,9 +235,9 @@ class CloudMoviesStack(Stack):
         upload_integration = apigateway.LambdaIntegration(upload_lambda)
         api.root.add_resource('uploadurl').add_method('GET', upload_integration)
 
-        # GET /download/{video_id}
+        # GET /download/{videoId}/{videoType}/{resolution}
         download_integration = apigateway.LambdaIntegration(download_lambda)
-        download_resource = api.root.add_resource('download').add_resource('{video_id}').add_resource('{resolution}')
+        download_resource = api.root.add_resource('download').add_resource('{videoId}').add_resource('{videoType}').add_resource('{resolution}')
         download_resource.add_method('GET', download_integration)
 
         videos_resource = api.root.add_resource('videos')
@@ -248,9 +247,9 @@ class CloudMoviesStack(Stack):
         list_videos_integration = apigateway.LambdaIntegration(list_videos_lambda)
         videos_resource.add_method('GET', list_videos_integration)
 
-        # GET /videos/{video_id}
+        # GET /videos/{videoId}/{videoType}
         find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
-        videos_resource.add_resource('{video_id}').add_method('GET', find_video_integration)
+        videos_resource.add_resource('{videoId}').add_resource('{videoType}').add_method('GET', find_video_integration)
 
         # GET /videos/query
         query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)

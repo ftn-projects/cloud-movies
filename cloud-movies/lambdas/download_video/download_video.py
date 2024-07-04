@@ -5,20 +5,20 @@ import json
 
 PRESIGNED_URL_EXPIRATION = 1 * 60 * 60  # hours
 
+dynamo = boto3.resource('dynamodb')
+s3 = boto3.client('s3')
+
 
 def handler(event, context):
-    dynamo = boto3.resource('dynamodb')
-    s3 = boto3.client('s3')
-
     table_name = os.getenv('VIDEOS_TABLE')
-    bucket_name = os.getenv('SOURCE_BUCKET')
+    bucket_name = os.getenv('PUBLISH_BUCKET')
 
-    video_id = event['pathParameters']['video_id']
+    video_id = event['pathParameters']['videoId']
+    video_type = event['pathParameters']['videoType']
     resolution = event['pathParameters']['resolution']
-    print(video_id)
 
     table = dynamo.Table(table_name)
-    response = table.get_item(Key={'id': video_id})
+    response = table.get_item(Key={'videoType': video_id, 'videoType': video_type})
 
     if 'Item' not in response:
         return {
@@ -26,7 +26,7 @@ def handler(event, context):
             'body': json.dumps({'error': 'Video not found'})
         }
     
-    video_file = response['Item']['files'][resolution]['path']
+    video_file = response['Item']['file'][resolution]['path']
     print(video_file)
 
     download_url = s3.generate_presigned_url(
