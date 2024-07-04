@@ -41,7 +41,7 @@ USER_GROUP = 'UserGroup'
 ADMIN_GROUP = 'AdminGroup'
 
 
-VIDEOS_TABLE_GSI = ['title', 'description', 'actors', 'directors', 'genres']
+VIDEOS_TABLE_GSI = ['videoType', 'title', 'description', 'actors', 'directors', 'genres']
 VIDEO_EXTENSIONS = ['mp4', 'mov', 'm4v']
 VIDEO_RESOLUTIONS = ['360', '480', '720']
 
