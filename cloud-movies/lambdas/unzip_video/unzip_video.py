@@ -77,7 +77,7 @@ def process_metadata(text: bytes) -> dict:
         'status': 'created',
         'created_at': now,
         'modified_at': now,
-        'file': {'360p': {}, '480p': {}, '720p': {}}
+        'file': {'360': {}, '480': {}, '720': {}}
     }
 
     if loaded_json['type'].upper() == 'MOVIE':

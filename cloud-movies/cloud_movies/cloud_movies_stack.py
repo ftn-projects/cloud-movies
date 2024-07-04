@@ -178,6 +178,7 @@ class CloudMoviesStack(Stack):
         cleanup_lambda = create_lambda(self, 'cleanupVideoLambda', 'cleanup_video', 'cleanup_video.handler')
         cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         cleanup_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
+        cleanup_lambda.add_environment('RESOLUTIONS', ','.join(VIDEO_RESOLUTIONS))
         self.publish_bucket.grant_read(cleanup_lambda)
         self.publish_bucket.grant_delete(cleanup_lambda)
         self.videos_table.grant_read_write_data(cleanup_lambda)
