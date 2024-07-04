@@ -86,17 +86,20 @@ class CloudMoviesStack(Stack):
         self.source_bucket = s3.Bucket(self, SOURCE_BUCKET, cors=[cors_allow_all], removal_policy=RemovalPolicy.DESTROY)
         self.publish_bucket = s3.Bucket(self, PUBLISH_BUCKET, cors=[cors_allow_all], removal_policy=RemovalPolicy.DESTROY)
         
-        
+        # SNS Topics
         self.source_upload_processing_topic = sns.Topic(self, 'sourceUploadProcessingTopic')
         self.source_upload_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
 
-        self.__create_source_object_upload_handlers()
-        self.__create_cleanup_video_lambda()
+
+        self.__create_source_upload_processing_workflow()
+        self.__create_source_upload_processing_cleanup()
+        self.__create_published_video_verification()
+
         self.__create_api_gateway()
         self.__create_user_pool()
 
 
-    def __create_source_object_upload_handlers(self) -> None:
+    def __create_source_upload_processing_workflow(self) -> None:
         unzip_lambda = create_lambda(self, 'unzipVideoLambda', 'unzip_video', 'unzip_video.handler')
         unzip_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         unzip_lambda.add_environment('EXTENSIONS', ','.join(VIDEO_EXTENSIONS))
@@ -155,7 +158,8 @@ class CloudMoviesStack(Stack):
 
         state_machine = sfn.StateMachine(
             self, 'transcodingStateMachine', 
-            definition_body=sfn.DefinitionBody.from_chainable(parallel.next(success_publish))
+            definition_body=sfn.DefinitionBody.from_chainable(parallel.next(success_publish)),
+            removal_policy=RemovalPolicy.DESTROY
         )
 
         start_transcoding_lambda = create_lambda(self, 'startTranscodingLambda', 'start_transcoding', 'start_transcoding.handler')
@@ -169,16 +173,8 @@ class CloudMoviesStack(Stack):
                 filters=[{'suffix': extension}]
             ))
 
-        verify_published_video_file_lambda = create_lambda(self, 'verifyPublishedVideoLambda', 'verify_published_video_file', 'verify_published_video_file.handler')
-        verify_published_video_file_lambda.add_environment('VIDEOS_TABLE', VIDEOS_TABLE)
-        verify_published_video_file_lambda.add_event_source(lambda_event_sources.S3EventSource(
-            bucket=self.publish_bucket,
-            events=[s3.EventType.OBJECT_CREATED],
-        ))
-        self.videos_table.grant_read_data(verify_published_video_file_lambda)
-        self.source_bucket.grant_delete(verify_published_video_file_lambda)
 
-    def __create_cleanup_video_lambda(self) -> None:
+    def __create_source_upload_processing_cleanup(self) -> None:
         cleanup_lambda = create_lambda(self, 'cleanupVideoLambda', 'cleanup_video', 'cleanup_video.handler')
         cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         cleanup_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
@@ -186,10 +182,20 @@ class CloudMoviesStack(Stack):
         self.publish_bucket.grant_delete(cleanup_lambda)
         self.videos_table.grant_read_write_data(cleanup_lambda)
 
-        self.source_upload_processing_topic.grant_publish(cleanup_lambda)
         self.source_upload_processing_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_lambda))
 
+    
+    def __create_published_video_verification(self) -> None:
+        verify_published_video_file_lambda = create_lambda(self, 'verifyPublishedVideoLambda', 'verify_published_video_file', 'verify_published_video_file.handler')
+        verify_published_video_file_lambda.add_environment('VIDEOS_TABLE', VIDEOS_TABLE)
+        self.videos_table.grant_read_data(verify_published_video_file_lambda)
+        self.source_bucket.grant_delete(verify_published_video_file_lambda)
 
+        verify_published_video_file_lambda.add_event_source(lambda_event_sources.S3EventSource(
+            bucket=self.publish_bucket,
+            events=[s3.EventType.OBJECT_CREATED],
+        ))
+        
 
     def __create_api_gateway(self) -> apigateway.RestApi:
         upload_lambda = create_lambda(self, 'uploadVideoLambda', 'upload_video', 'upload_video.handler')
