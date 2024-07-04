@@ -7,15 +7,12 @@ from aws_cdk import (
     aws_stepfunctions_tasks as sfn_tasks,
     aws_stepfunctions as sfn,
     aws_lambda_event_sources as lambda_event_sources,
-    aws_events_targets as targets,
-    aws_events as events,
     aws_sns_subscriptions as subscriptions,
     aws_sns as sns,
     aws_cognito as cognito,
     aws_iam as iam,
     RemovalPolicy,
     CfnOutput,
-    aws_lambda as _lambda,
     Stack
 )
 
@@ -59,12 +56,8 @@ class CloudMoviesStack(Stack):
         # DynamoDB Tables
         self.videos_table = dynamodb.Table(
             self, VIDEOS_TABLE,
-            partition_key=dynamodb.Attribute(
-                name='videoId', type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name='videoType', type=dynamodb.AttributeType.STRING
-            ),
+            partition_key=dynamodb.Attribute(name='videoId', type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name='videoType', type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY
         )
         for index in VIDEOS_TABLE_GSI:
@@ -75,9 +68,7 @@ class CloudMoviesStack(Stack):
 
         self.subscriptions_table = dynamodb.Table(
             self, SUBSCRIPTIONS_TABLE,
-            partition_key=dynamodb.Attribute(
-                name='id', type=dynamodb.AttributeType.STRING
-            ),
+            partition_key=dynamodb.Attribute(name='id', type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY
         )
 
@@ -96,9 +87,8 @@ class CloudMoviesStack(Stack):
         self.publish_bucket = s3.Bucket(self, PUBLISH_BUCKET, cors=[cors_allow_all], removal_policy=RemovalPolicy.DESTROY)
         
         
-        self.source_upload_processing_topic = sns.Topic(self, 'unzippingResultTopic')
+        self.source_upload_processing_topic = sns.Topic(self, 'sourceUploadProcessingTopic')
         self.source_upload_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
-        # source_upload_processing_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_source_lambda))
 
         self.__create_source_object_upload_handlers()
         self.__create_cleanup_video_lambda()
@@ -121,7 +111,7 @@ class CloudMoviesStack(Stack):
             filters=[{'suffix': '.zip'}]
         ))
 
-        ffmpeg_layer = create_lambda_layer(self, 'FFmpegLayer', 'layer/ffmpeg')
+        ffmpeg_layer = create_lambda_layer(self, 'ffmpegLayer', 'layer/ffmpeg')
         transcode_lambda = create_lambda(self, 'transcodeVideoLambda', 'transcode_video', 'transcode_video.handler', 900, 1024, [ffmpeg_layer])
         transcode_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         transcode_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
