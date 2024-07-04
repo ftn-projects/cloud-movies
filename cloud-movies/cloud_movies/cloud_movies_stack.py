@@ -96,14 +96,12 @@ class CloudMoviesStack(Stack):
         self.publish_bucket = s3.Bucket(self, PUBLISH_BUCKET, cors=[cors_allow_all])
         
         
-        self.failed_source_processing_topic = sns.Topic(self, 'failedSourceBucketProcessingTopic')
-        self.failed_source_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
-        # failed_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_source_lambda))
-
-        self.successful_transcoding_topic = sns.Topic(self, 'successfulVideoTranscodingTopic')
-        self.successful_transcoding_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
+        self.source_upload_processing_topic = sns.Topic(self, 'unzippingResultTopic')
+        self.source_upload_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
+        # source_upload_processing_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_source_lambda))
 
         self.__create_source_object_upload_handlers()
+        self.__create_cleanup_video_lambda()
         self.__create_api_gateway()
         self.__create_user_pool()
 
@@ -112,10 +110,10 @@ class CloudMoviesStack(Stack):
         unzip_lambda = create_lambda(self, 'unzipVideoLambda', 'unzip_video', 'unzip_video.handler')
         unzip_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         unzip_lambda.add_environment('EXTENSIONS', ','.join(VIDEO_EXTENSIONS))
-        unzip_lambda.add_environment('FAILED_TOPIC_ARN', self.failed_source_processing_topic.topic_arn)
+        unzip_lambda.add_environment('FAILED_TOPIC_ARN', self.source_upload_processing_topic.topic_arn)
         self.videos_table.grant_write_data(unzip_lambda)
         self.source_bucket.grant_read_write(unzip_lambda)
-        self.failed_source_processing_topic.grant_publish(unzip_lambda)
+        self.source_upload_processing_topic.grant_publish(unzip_lambda)
 
         unzip_lambda.add_event_source(lambda_event_sources.S3EventSource(
             bucket=self.source_bucket,
@@ -128,28 +126,9 @@ class CloudMoviesStack(Stack):
         transcode_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         self.source_bucket.grant_read(transcode_lambda)
         self.publish_bucket.grant_write(transcode_lambda)
-        
-        success_publish = sfn_tasks.SnsPublish(
-            self, 'publishSuccessfulTranscoding',
-            topic=self.successful_transcoding_topic,
-            message=sfn.TaskInput.from_object({
-                'message': 'Transcoding successful',
-                'objectKey.$': '$.[0].Payload.statusCode'
-            })
-        )
-        failed_publish = sfn_tasks.SnsPublish(
-            self, 'publishFailedTranscoding',
-            topic=self.failed_source_processing_topic,
-            message=sfn.TaskInput.from_object({
-                'message': 'Transcoding failed',
-                'objectKey.$': '$.objectKey'
-            })
-        )
-        self.successful_transcoding_topic.grant_publish(transcode_lambda)
-        self.failed_source_processing_topic.grant_publish(transcode_lambda)
+        self.source_upload_processing_topic.grant_publish(transcode_lambda)
 
         parallel = sfn.Parallel(self, 'parallelTranscoding')
-        parallel.add_catch(failed_publish)
         for resolution in VIDEO_RESOLUTIONS:
             parallel.branch(sfn_tasks.LambdaInvoke(
                 self, f'transcoding{resolution}',
@@ -163,6 +142,25 @@ class CloudMoviesStack(Stack):
                 max_attempts=3,
                 backoff_rate=2
             ))
+
+        success_publish = sfn_tasks.SnsPublish(
+            self, 'publishSuccessfulTranscoding',
+            topic=self.source_upload_processing_topic,
+            message=sfn.TaskInput.from_object({
+                'success': True,
+                'objectKey.$': '$.[0].Payload.objectKey'
+            })
+        )
+        failed_publish = sfn_tasks.SnsPublish(
+            self, 'publishFailedTranscoding',
+            topic=self.source_upload_processing_topic,
+            message=sfn.TaskInput.from_object({
+                'success': False,
+                'state': 'transcoding',
+                'error.$': '$.errorInfo.Cause'
+            })
+        )
+        parallel.add_catch(failed_publish, errors=["States.ALL"], result_path="$.errorInfo")
 
         state_machine = sfn.StateMachine(
             self, 'transcodingStateMachine', 
@@ -179,6 +177,20 @@ class CloudMoviesStack(Stack):
                 events=[s3.EventType.OBJECT_CREATED],
                 filters=[{'suffix': extension}]
             ))
+
+
+    def __create_cleanup_video_lambda(self) -> None:
+        cleanup_lambda = create_lambda(self, 'cleanupVideoLambda', 'cleanup_video', 'cleanup_video.handler')
+        cleanup_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
+        cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
+        cleanup_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
+        self.source_bucket.grant_delete(cleanup_lambda)
+        self.publish_bucket.grant_delete(cleanup_lambda)
+        self.videos_table.grant_read_write_data(cleanup_lambda)
+
+        self.source_upload_processing_topic.grant_publish(cleanup_lambda)
+        self.source_upload_processing_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_lambda))
+
 
 
     def __create_api_gateway(self) -> apigateway.RestApi:

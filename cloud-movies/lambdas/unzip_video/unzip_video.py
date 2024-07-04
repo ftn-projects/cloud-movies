@@ -34,7 +34,7 @@ def handler(event, context):
             video_files = [f for f in files if any(f.endswith(ext) for ext in extensions)]
             json_files = [f for f in files if f.endswith(METADATA_EXTENSION)]
 
-            if len(video_files) != 1 or len(json_files) != 1:
+            if len(files) != 2 or len(video_files) != 1 or len(json_files) != 1:
                 raise ValueError('Zip file must contain exactly one video file and one metadata file.')
 
             logging.info(f'Processing video file {video_files[0]} and metadata file {json_files[0]}')
@@ -49,14 +49,19 @@ def handler(event, context):
                 Key=get_new_key(video_files[0], metadata), 
                 Body=zip_ref.read(video_files[0])
             )
-    except Exception as e:
+    except ValueError as e:
         logging.error(f'Error processing object {object_key} from bucket {bucket}: {str(e)}')
         sns_client.publish(
             TopicArn=failed_topic_arn,
             Subject='Failed to process source bucket object',
-            Message=f'Error processing object {object_key} from bucket {bucket}: {str(e)}'
+            Message=json.dumps({
+                'success': False,
+                'state': 'unzipping',
+                'objectKey': object_key
+            })
         )
     finally:
+        s3_resource.Object(bucket, object_key).delete()
         cleanup_tmp_files()
 
 

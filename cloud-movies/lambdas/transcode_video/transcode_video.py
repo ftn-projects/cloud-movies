@@ -3,8 +3,6 @@ import os
 
 
 def handler(event, context):
-    print(event)
-
     source_bucket = os.environ['SOURCE_BUCKET']
     publish_bucket = os.environ['PUBLISH_BUCKET']
 
@@ -17,9 +15,9 @@ def handler(event, context):
 
     new_key = f'{partition_key}_{sort_key}_{timestamp}_{resolution}.mp4'
 
-    if extension == 'meow':
-        raise Exception('Cannot transcode meow files')
+    if 'meow' in object_key:
+        raise ValueError(object_key)
 
     return {
-        'statusCode': 200
+        'objectKey': object_key
     }
