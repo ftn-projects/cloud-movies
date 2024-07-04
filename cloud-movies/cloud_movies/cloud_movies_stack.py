@@ -1,5 +1,5 @@
 from constructs import Construct
-from .create_lambda import create_lambda, create_lambda_layer
+from .create_lambda import create_lambda, create_lambda_layer, create_python_lambda_layer
 from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
@@ -90,6 +90,8 @@ class CloudMoviesStack(Stack):
         self.source_upload_processing_topic = sns.Topic(self, 'sourceUploadProcessingTopic')
         self.source_upload_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
 
+        # Utils layer
+        self.utils_layer = create_python_lambda_layer(self, 'utils', 'layer/utils')
 
         self.__create_source_upload_processing_workflow()
         self.__create_source_upload_processing_cleanup()
@@ -180,10 +182,11 @@ class CloudMoviesStack(Stack):
         cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         cleanup_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         cleanup_lambda.add_environment('RESOLUTIONS', ','.join(VIDEO_RESOLUTIONS))
+        cleanup_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         self.publish_bucket.grant_read(cleanup_lambda)
         self.publish_bucket.grant_delete(cleanup_lambda)
         self.videos_table.grant_read_write_data(cleanup_lambda)
-
+        self.source_bucket.grant_delete(cleanup_lambda)
         self.source_upload_processing_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_lambda))
 
     
@@ -210,7 +213,7 @@ class CloudMoviesStack(Stack):
         self.source_bucket.grant_read(download_lambda)
         self.videos_table.grant_read_data(download_lambda)
 
-        list_videos_lambda = create_lambda(self, 'listVideosLambda', 'list_videos', 'list_videos.handler')
+        list_videos_lambda = create_lambda(self, 'listVideosLambda', 'list_videos', 'list_videos.handler', layers=[self.utils_layer])
         list_videos_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.videos_table.grant_read_data(list_videos_lambda)
 

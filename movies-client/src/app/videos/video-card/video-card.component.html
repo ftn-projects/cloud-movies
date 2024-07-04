@@ -1,15 +1,15 @@
 <div (click)="onCardClick()" class="video-card">
   <div class="title-rating">
-    <h2 class="title">Title of Tv-Show or Movie (Year)</h2>
+    <h2 class="title">{{content.title}} ({{getYear()}})</h2>
     <p class="rating">5.8/10 <i class="fa fa-star"></i></p>
   </div>
   <div class="details-holder">
     <div class="left-column">
-      <p>Genres: action/comedy/romantic</p>
+      <p>Genres: {{content.genres}}</p>
     </div>
     <div class="right-column">
-      <p>Duration: 90 minutes</p>
+      <p>Duration: {{content.duration}} minutes</p>
     </div>
   </div>
-  <p class="description">Some description goes here</p>
+  <p class="description">{{content.description}}</p>
 </div>

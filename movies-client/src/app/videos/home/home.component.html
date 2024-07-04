@@ -4,9 +4,7 @@
     <button class="search-button" type="submit"><i class="fa fa-search"></i></button>
   </form>
 
-  <div class="video-list">
-    <app-video-card [videoId]="'1'"></app-video-card>
-    <app-video-card [videoId]="'2'"></app-video-card>
-    <app-video-card [videoId]="'3'"></app-video-card>
+  <div class="video-list" *ngFor="let c of homepageContent">
+    <app-video-card [content]="c"></app-video-card>
   </div>
 </div>

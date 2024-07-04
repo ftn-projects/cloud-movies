@@ -7,7 +7,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import {MaterialModule} from "./material/material.module";
 import {AuthModule} from "./auth/auth.module";
 import {VideosModule} from "./videos/videos.module";
-
+import { HttpClientModule, HTTP_INTERCEPTORS } from "@angular/common/http";
 
 @NgModule({
   declarations: [
@@ -17,10 +17,12 @@ import {VideosModule} from "./videos/videos.module";
     BrowserModule,
     AppRoutingModule,
     AuthModule,
-    VideosModule
+    VideosModule,
+    MaterialModule,
+    HttpClientModule
   ],
   providers: [
-    provideAnimationsAsync()
+    provideAnimationsAsync(),
   ],
   bootstrap: [AppComponent]
 })

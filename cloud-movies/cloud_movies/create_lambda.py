@@ -3,7 +3,7 @@ from aws_cdk import (
     aws_lambda as _lambda,
     Duration
 )
-
+from aws_cdk.aws_lambda_python_alpha import PythonLayerVersion
 
 LAMBDAS_HOME = 'lambdas'
 RUNTIME = _lambda.Runtime.PYTHON_3_10
@@ -48,3 +48,10 @@ def create_lambda_layer(scope, id, code):
         code=_lambda.Code.from_asset(code),
         compatible_runtimes=[RUNTIME],
     )
+
+def create_python_lambda_layer(scope, id, entry):
+    return PythonLayerVersion(
+            scope, id,
+            entry=entry,
+            compatible_runtimes=[RUNTIME]
+        )
