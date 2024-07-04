@@ -31,7 +31,7 @@ def handler(event, context):
         table = dynamodb.Table(videos_table)
         table.update_item(
             Key={'videoId': primary_key, 'videoType': sort_key},
-            UpdateExpression='SET file = :val',
+            UpdateExpression='SET files = :val',
             ExpressionAttributeValues={':val': {
                 res: {'path': f'{publish_key}_{res}.mp4', 'size': obj.content_length} for res, obj in objects.items()
             }}
