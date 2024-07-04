@@ -1,5 +1,5 @@
 from constructs import Construct
-from .create_lambda import create_lambda
+from .create_lambda import create_lambda, create_lambda_layer
 from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
@@ -15,7 +15,7 @@ from aws_cdk import (
     aws_iam as iam,
     RemovalPolicy,
     CfnOutput,
-    Duration,
+    aws_lambda as _lambda,
     Stack
 )
 
@@ -92,8 +92,8 @@ class CloudMoviesStack(Stack):
             allowed_origins=['*'],
             allowed_headers=['*']
         )
-        self.source_bucket = s3.Bucket(self, SOURCE_BUCKET, cors=[cors_allow_all])
-        self.publish_bucket = s3.Bucket(self, PUBLISH_BUCKET, cors=[cors_allow_all])
+        self.source_bucket = s3.Bucket(self, SOURCE_BUCKET, cors=[cors_allow_all], removal_policy=RemovalPolicy.DESTROY)
+        self.publish_bucket = s3.Bucket(self, PUBLISH_BUCKET, cors=[cors_allow_all], removal_policy=RemovalPolicy.DESTROY)
         
         
         self.source_upload_processing_topic = sns.Topic(self, 'unzippingResultTopic')
@@ -121,7 +121,8 @@ class CloudMoviesStack(Stack):
             filters=[{'suffix': '.zip'}]
         ))
 
-        transcode_lambda = create_lambda(self, 'transcodeVideoLambda', 'transcode_video', 'transcode_video.handler')
+        ffmpeg_layer = create_lambda_layer(self, 'FFmpegLayer', 'layer/ffmpeg')
+        transcode_lambda = create_lambda(self, 'transcodeVideoLambda', 'transcode_video', 'transcode_video.handler', 900, 1024, [ffmpeg_layer])
         transcode_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         transcode_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         self.source_bucket.grant_read(transcode_lambda)
@@ -178,6 +179,14 @@ class CloudMoviesStack(Stack):
                 filters=[{'suffix': extension}]
             ))
 
+        verify_published_video_file_lambda = create_lambda(self, 'verifyPublishedVideoLambda', 'verify_published_video_file', 'verify_published_video_file.handler')
+        verify_published_video_file_lambda.add_environment('VIDEOS_TABLE', VIDEOS_TABLE)
+        verify_published_video_file_lambda.add_event_source(lambda_event_sources.S3EventSource(
+            bucket=self.publish_bucket,
+            events=[s3.EventType.OBJECT_CREATED],
+        ))
+        self.videos_table.grant_read_data(verify_published_video_file_lambda)
+        self.source_bucket.grant_delete(verify_published_video_file_lambda)
 
     def __create_cleanup_video_lambda(self) -> None:
         cleanup_lambda = create_lambda(self, 'cleanupVideoLambda', 'cleanup_video', 'cleanup_video.handler')
@@ -297,7 +306,8 @@ class CloudMoviesStack(Stack):
             ),
             lambda_triggers=cognito.UserPoolTriggers(
                 post_confirmation=attach_role_lambda
-            ) 
+            ), 
+            removal_policy=RemovalPolicy.DESTROY
         )
 
         pool_domain = pool.add_domain(
