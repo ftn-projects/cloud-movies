@@ -9,8 +9,8 @@ def handler(event, context):
     sfn_client = boto3.client('stepfunctions')
     
     object_key = event['Records'][0]['s3']['object']['key']
-    timestamp = time.strftime("%Y%m%d:%H%M%S")
-
+    timestamp = str(round(time.time()))
+    print(timestamp)
     sfn_client.start_execution(
         stateMachineArn=state_machine_arn,
         input=json.dumps({

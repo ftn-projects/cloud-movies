@@ -229,6 +229,12 @@ class CloudMoviesStack(Stack):
         list_subscriptions_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
         self.subscriptions_table.grant_read_data(list_subscriptions_lambda)
 
+        stream_lambda = create_lambda(self, 'streamLambda', 'stream_video', 'stream_video.handler', layers=[self.utils_layer])
+        stream_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
+        stream_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
+        self.publish_bucket.grant_read(stream_lambda)
+        self.videos_table.grant_read_data(stream_lambda)
+
         # Create API Gateway
         api = apigateway.RestApi(self, API_GATEWAY)
 
@@ -250,7 +256,8 @@ class CloudMoviesStack(Stack):
 
         # GET /videos/{videoId}?season={season}&episode={episode}
         find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
-        videos_resource.add_resource('{videoId}').add_method('GET', find_video_integration)
+        video_id_res = videos_resource.add_resource('{videoId}')
+        video_id_res.add_method('GET', find_video_integration)
 
         # GET /videos/query
         query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)
@@ -260,6 +267,9 @@ class CloudMoviesStack(Stack):
         list_subscriptions_integration = apigateway.LambdaIntegration(list_subscriptions_lambda)
         subscriptions_resource.add_method('GET', list_subscriptions_integration)
 
+        # GET /videos/{videoId}/{videoType}/{resolution}
+        stream_integration = apigateway.LambdaIntegration(stream_lambda)
+        video_id_res.add_resource('{videoType}').add_resource('{resolution}').add_method('GET', stream_integration)
         return api
 
 

@@ -1,7 +1,7 @@
 ﻿export const environments = {
 
-  cognitoUserPoolId: "eu-central-1_eilPIYtsQ",
-  cognitoAppClientId: "3hi1dgktkn63a08kv37mnidnna",
-  api: "https://32z1h3lr3b.execute-api.eu-central-1.amazonaws.com/prod",
+  cognitoUserPoolId: "eu-central-1_6DFpdGS9r",
+  cognitoAppClientId: "50o2llod6l96gd9ndinjq1hu7",
+  api: "https://saasxr1jw5.execute-api.eu-central-1.amazonaws.com/prod",
   region: "eu-central-1",
 }

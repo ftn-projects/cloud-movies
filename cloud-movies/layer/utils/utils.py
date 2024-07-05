@@ -15,3 +15,14 @@ def create_response(status, body):
         },
         'body': json.dumps(body, default=str)
         }
+
+def create_response_presigned_link(status, body):
+    return {
+        'statusCode': status,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Methods": "POST,GET,OPTIONS",
+        },
+        'body': json.dumps(body)
+    }

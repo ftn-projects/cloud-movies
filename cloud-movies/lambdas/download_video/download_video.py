@@ -18,7 +18,7 @@ def handler(event, context):
     resolution = event['pathParameters']['resolution']
 
     table = dynamo.Table(table_name)
-    response = table.get_item(Key={'videoType': video_id, 'videoType': video_type})
+    response = table.get_item(Key={'videoId': video_id, 'videoType': video_type})
 
     if 'Item' not in response:
         return {

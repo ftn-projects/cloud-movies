@@ -1,6 +1,7 @@
 <div class="container">
     <div class="player-tv-show">
       <video
+        [src]="videoSource"
         controls>
       </video>
       <div class="tv-show" *ngIf="true">
@@ -19,6 +20,14 @@
           <li class="episode">3. Some other thingy</li>
           <li class="episode">4. Name</li>
         </ul>
+        <mat-form-field>
+          <mat-label>Resolution</mat-label>
+          <mat-select (selectionChange)="getStream($event)">
+            <mat-option [value]="360">360p</mat-option>
+            <mat-option [value]="480">480p</mat-option>
+            <mat-option [value]="720">720p</mat-option>
+          </mat-select>
+        </mat-form-field>
       </div>
   </div>
     <div class="details">

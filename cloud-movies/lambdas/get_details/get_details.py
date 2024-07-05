@@ -1,7 +1,7 @@
 import json
 import os
 import boto3
-
+import utils
 
 def handler(event, context):
     dynamodb = boto3.resource('dynamodb')
@@ -18,12 +18,9 @@ def handler(event, context):
     if 'Item' in response:
         item = response['Item']
         status_code = 200
-        body = json.dumps(item)
+        body = item
     else:
         status_code = 404
-        body = json.dumps({'error': 'Item not found'})
+        body = {'error': 'Item not found'}
     
-    return {
-        'statusCode': status_code,
-        'body': body
-    }
+    return utils.create_response(status_code, body)
