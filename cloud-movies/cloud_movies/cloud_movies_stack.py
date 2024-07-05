@@ -83,8 +83,16 @@ class CloudMoviesStack(Stack):
             allowed_origins=['*'],
             allowed_headers=['*']
         )
-        self.source_bucket = s3.Bucket(self, SOURCE_BUCKET, cors=[cors_allow_all], removal_policy=RemovalPolicy.DESTROY)
-        self.publish_bucket = s3.Bucket(self, PUBLISH_BUCKET, cors=[cors_allow_all], removal_policy=RemovalPolicy.DESTROY)
+        self.source_bucket = s3.Bucket(
+            self, SOURCE_BUCKET, cors=[cors_allow_all], 
+            auto_delete_objects=True,
+            removal_policy=RemovalPolicy.DESTROY
+        )
+        self.publish_bucket = s3.Bucket(
+            self, PUBLISH_BUCKET, cors=[cors_allow_all],
+            auto_delete_objects=True,
+            removal_policy=RemovalPolicy.DESTROY
+        )
         
         # SNS Topics
         self.source_upload_processing_topic = sns.Topic(self, 'sourceUploadProcessingTopic')
