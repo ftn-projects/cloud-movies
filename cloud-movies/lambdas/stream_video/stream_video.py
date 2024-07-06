@@ -1,12 +1,12 @@
 import os
 import boto3
-from botocore.config import Config
+import botocore
 import json
 import utils
+from botocore.config import Config
+PRESIGNED_URL_EXPIRATION = 1 * 5 * 60  # hours
 
-PRESIGNED_URL_EXPIRATION = 1 * 60 * 60  # hours
-
-s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
+s3 = boto3.client('s3', config=Config(s3={'addressing_style': 'path'}, signature_version='s3v4', region_name='eu-central-1'))
 dynamo = boto3.resource('dynamodb')
 
 def handler(event, context):
@@ -40,4 +40,4 @@ def handler(event, context):
     print(url)
     response = s3.get_object(Bucket=bucket_name, Key=video_file)
     print(response)
-    return utils.create_response(200, {'downloadlink':url})
+    return utils.create_response_presigned_link(200, url)

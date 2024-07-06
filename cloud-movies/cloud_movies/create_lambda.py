@@ -6,7 +6,7 @@ from aws_cdk import (
 from aws_cdk.aws_lambda_python_alpha import PythonLayerVersion
 
 LAMBDAS_HOME = 'lambdas'
-RUNTIME = _lambda.Runtime.PYTHON_3_10
+RUNTIME = _lambda.Runtime.PYTHON_3_9
 TIMEOUT_DURATION = Duration.seconds(10)
 
 

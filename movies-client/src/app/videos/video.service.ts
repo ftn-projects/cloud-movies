@@ -23,9 +23,9 @@ export class VideoService {
 
   }
 
-  getStreamingLink(videoId: string, videoType: string, resolution: string): Observable<Downloadable> {
+  getStreamingLink(videoId: string, videoType: string, resolution: string): Observable<string> {
     // videoId should be ID from published bucket
-    return this.http.get<Downloadable>(environments.api + `/videos/${videoId}/${videoType}/${resolution}`)
+    return this.http.get<string>(environments.api + `/videos/${videoId}/${videoType}/${resolution}`)
   }
 
   getDownloadLink(contentId: string) {

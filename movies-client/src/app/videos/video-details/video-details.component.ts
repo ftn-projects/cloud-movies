@@ -28,8 +28,8 @@ export class VideoDetailsComponent implements OnInit {
   getStream(event:MatSelectChange){
     this.videoService.getStreamingLink(this.videoId, this.videoType, event.value).subscribe({
       next: (result) => {
-        this.videoSource = result.downloadlink;
-        console.log(this.videoSource);
+        this.videoSource = result;
+        console.log(result);
       },
       error: (error) => {
         console.log(error);
