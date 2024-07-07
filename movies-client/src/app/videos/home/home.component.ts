@@ -1,6 +1,6 @@
 import {Component, OnInit} from '@angular/core';
 import {FormControl} from "@angular/forms";
-import {VideoService} from "../video.service";
+import {ContentService} from "../content.service";
 import {Content} from "../models/content";
 
 @Component({
@@ -12,7 +12,7 @@ export class HomeComponent implements OnInit {
 
   searchText: string = '';
   homepageContent: Content[] = []
-  constructor(private videoService: VideoService) {}
+  constructor(private videoService: ContentService) {}
 
   onSubmit() {
     alert('beep boop');

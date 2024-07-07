@@ -8,6 +8,7 @@ import {MaterialModule} from "./material/material.module";
 import {AuthModule} from "./auth/auth.module";
 import {VideosModule} from "./videos/videos.module";
 import { HttpClientModule, HTTP_INTERCEPTORS } from "@angular/common/http";
+import {SubscriptionModule} from "./subscription/subscription.module";
 import { ManageModule } from './videos/manage/manage.module';
 
 @NgModule({
@@ -21,7 +22,8 @@ import { ManageModule } from './videos/manage/manage.module';
     VideosModule,
     MaterialModule,
     HttpClientModule,
-    ManageModule
+    SubscriptionModule,
+    ManageModule,
   ],
   providers: [
     provideAnimationsAsync(),

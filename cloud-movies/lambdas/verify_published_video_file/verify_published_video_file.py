@@ -4,7 +4,7 @@ import os
 
 def handler(event, context):
     s3 = boto3.client('s3')
-    dynamodb = boto3.client('dynamodb')
+    dynamodb = boto3.resource('dynamodb')
     table_name = os.getenv('VIDEOS_TABLE')
     
     s3_bucket = event['Records'][0]['s3']['bucket']['name']

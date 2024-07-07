@@ -78,18 +78,21 @@ class CloudMoviesStack(Stack):
                 s3.HttpMethods.GET,
                 s3.HttpMethods.PUT,
                 s3.HttpMethods.POST,
-                s3.HttpMethods.DELETE
+                s3.HttpMethods.DELETE,
+                s3.HttpMethods.HEAD,
             ],
             allowed_origins=['*'],
             allowed_headers=['*']
         )
         self.source_bucket = s3.Bucket(
-            self, SOURCE_BUCKET, cors=[cors_allow_all], 
+            self, SOURCE_BUCKET, 
+            cors=[cors_allow_all], 
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY
         )
         self.publish_bucket = s3.Bucket(
-            self, PUBLISH_BUCKET, cors=[cors_allow_all],
+            self, PUBLISH_BUCKET, 
+            cors=[cors_allow_all],
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY
         )
@@ -202,12 +205,13 @@ class CloudMoviesStack(Stack):
         verify_published_video_file_lambda = create_lambda(self, 'verifyPublishedVideoLambda', 'verify_published_video_file', 'verify_published_video_file.handler')
         verify_published_video_file_lambda.add_environment('VIDEOS_TABLE', VIDEOS_TABLE)
         self.videos_table.grant_read_data(verify_published_video_file_lambda)
+        
         self.source_bucket.grant_delete(verify_published_video_file_lambda)
 
-        verify_published_video_file_lambda.add_event_source(lambda_event_sources.S3EventSource(
-            bucket=self.publish_bucket,
-            events=[s3.EventType.OBJECT_CREATED],
-        ))
+        # verify_published_video_file_lambda.add_event_source(lambda_event_sources.S3EventSource(
+        #     bucket=self.publish_bucket,
+        #     events=[s3.EventType.OBJECT_CREATED],
+        # ))
         
 
     def __create_api_gateway(self) -> apigateway.RestApi:
@@ -237,11 +241,17 @@ class CloudMoviesStack(Stack):
         list_subscriptions_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
         self.subscriptions_table.grant_read_data(list_subscriptions_lambda)
 
+
         stream_lambda = create_lambda(self, 'streamLambda', 'stream_video', 'stream_video.handler', layers=[self.utils_layer])
         stream_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         stream_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.publish_bucket.grant_read(stream_lambda)
         self.videos_table.grant_read_data(stream_lambda)
+        
+        stream_lambda.add_to_role_policy(iam.PolicyStatement(
+            actions=['s3:*'],
+            resources=[f"{self.publish_bucket.bucket_arn}/*"]
+        ))
 
         # Create API Gateway
         api = apigateway.RestApi(self, API_GATEWAY)

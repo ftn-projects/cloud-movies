@@ -1,0 +1,31 @@
+<h1>Subscriptions</h1>
+<div class="container">
+  <div class="sub-container">
+      <h2>Actors</h2>
+      <hr>
+      <ul *ngFor="let a of userSubscriptions.actors">
+        <li>{{a}}<i class="fa fa-times cancel-subscription" (click)="unsubscribe(a, 'actors')"></i></li>
+      </ul>
+    </div>
+    <div class="sub-container">
+      <h2>Directors</h2>
+      <hr>
+      <ul *ngFor="let d of userSubscriptions.directors">
+        <li>{{d}}<i class="fa fa-times cancel-subscription" (click)="unsubscribe(d, 'directors')"></i></li>
+      </ul>
+    </div>
+  <div class="sub-container">
+    <h2>Genres</h2>
+    <hr>
+    <ul *ngFor="let g of userSubscriptions.genres">
+      <li>{{g}}<i class="fa fa-times cancel-subscription" (click)="unsubscribe(g, 'genres')"></i></li>
+    </ul>
+  </div>
+  <div class="sub-container">
+    <h2>Tv-Shows</h2>
+    <hr>
+    <ul *ngFor="let s of userSubscriptions.shows">
+      <li>{{s}}<i class="fa fa-times cancel-subscription" (click)="unsubscribe(s,  'shows')"></i></li>
+    </ul>
+  </div>
+</div>

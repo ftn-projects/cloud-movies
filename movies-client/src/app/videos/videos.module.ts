@@ -7,6 +7,7 @@ import {FormsModule, ReactiveFormsModule} from "@angular/forms";
 import { VideoCardComponent } from './video-card/video-card.component';
 import {RouterLink} from "@angular/router";
 
+
 @NgModule({
   declarations: [
     HomeComponent,
