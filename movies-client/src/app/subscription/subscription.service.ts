@@ -16,12 +16,13 @@ export class SubscriptionService {
   subscribe(type: string,  name: string): Observable<string> {
     const body = {type: type, name:name}
     const userId: string = this.authService.getUserId();
+    console.log(userId);
     return this.http.post<string>(environments.api + `/subscription/${userId}`, body);
   }
 
   unsubscribe(type: string, name: string): Observable<string> {
     const userId = this.authService.getUserId();
-    return this.http.delete<string>(environments.api + `/subscriptions/${userId}/${type}/${name}`);
+    return this.http.delete<string>(environments.api + `/subscription/${userId}/${type}/${name}`);
   }
 
   getSubscriptions(): Observable<UserSubs>{
