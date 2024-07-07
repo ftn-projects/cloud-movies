@@ -13,7 +13,7 @@ const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'register', component: RegisterComponent },
   { path: 'login', component: LoginComponent },
-  { path: 'video/:videoType/:videoId', component: VideoDetailsComponent },
+  { path: 'video/:videoId', component: VideoDetailsComponent },
   { path: "subscriptions", component: SubscriptionComponent },
   /* Videos management */
   { path: 'create/movie', component: ManageMovieComponent },
