@@ -14,7 +14,7 @@ export class RatingService {
 
   rateContent(contentId: string, rating: number): Observable<string> {
     const user: string = this.authService.getUserId();
-    return this.http.post<string>(environments.api + `/rate/${contentId}`, {rating: rating, user:user});
+    return this.http.post<string>(environments.api + `/ratings/${user}`, {rating: rating, contentId: contentId});
   }
 
 }
