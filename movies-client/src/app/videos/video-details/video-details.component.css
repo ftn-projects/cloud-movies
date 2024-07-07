@@ -13,7 +13,7 @@ video {
 .details {
   background-color: #31363F;
   display: flex;
-  margin-top: 2rem;
+  margin-top: 1rem;
   padding: 2.5%;
   flex-direction: column;
   color: white;
@@ -22,7 +22,7 @@ video {
   border-radius: 1rem;
 }
 
-.tv-show h2{
+.rating h2{
   color: white;
 }
 
@@ -35,18 +35,18 @@ video {
   align-items: stretch;
 }
 
-.tv-show{
+.info-holder {
   display: flex;
   flex-direction: column;
   padding: 15px 1rem;
   width: 25%;
   background-color: #31363F;
-  overflow: auto;
   border-radius: 0.5rem;
+  gap: 1rem;
 }
 
 .download-button {
-  width: 25%;
+  width: 100%;
 }
 
 .button-holder {
@@ -55,7 +55,6 @@ video {
   padding-right: 1rem;
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   gap: 1rem;
 }
 
@@ -81,7 +80,7 @@ button[mat-raised-button]{
   width: 100%;
   margin: 0;
   padding: 0;
-  max-height: 40%;
+  max-height: 100%;
   flex-direction: column;
   display: flex;
   overflow: auto;
@@ -102,14 +101,76 @@ button[mat-raised-button]{
   background-color: #2d3239;
 }
 
-.rating{
-  margin: 2rem;
+.tv-show{
+  margin: 1rem;
   border-radius: 1rem;
   background-color: #31363F;
   width: 85%;
+  justify-content: space-between;
+  display: flex;
   padding: 2.5%;
 }
 
-.rating h1 {
+h2 {
   color: white;
+}
+
+.sub-button {
+  background-color: rgb(95,46,172);
+  color: white;
+  margin-left: .75rem;
+  border-radius: 100%;
+  border: none;
+  padding: .25em;
+  transition-duration: 400ms;
+}
+
+.sub-button:hover {
+  background-color: white;
+  color: rgb(95,46,172);
+  cursor: pointer;
+  transition-duration: 400ms;
+}
+
+.tv-show-episodes {
+  display: flex;
+  flex-direction: row;
+  width: 70%;
+  gap: 1.5rem;
+}
+
+.tv-show-details {
+  width: 25%;
+  color: white;
+  overflow: auto;
+}
+
+.rating-icon {
+  font-size: 2em;
+  color: rgb(95,46,172);
+  cursor: pointer;
+  padding: 0.4rem;
+  transition-duration: 500ms;
+  transition-delay: 100ms;
+  border: none;
+}
+
+.rating-icon:hover {
+  color: white;
+  background-color: rgb(95,46,172);
+  border-radius: 100%;
+  border: none;
+  transition-duration: 500ms;
+}
+
+.rating{
+  background-color: #222831;
+  border-radius: 2rem;
+  display: flex;
+  margin-bottom: 1rem;
+  flex-direction: row;
+  justify-content: center;
+  gap: 1.5rem;
+  width: 100%;
+  padding: 0.2rem;
 }

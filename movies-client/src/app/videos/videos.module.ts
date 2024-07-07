@@ -8,6 +8,7 @@ import { VideoCardComponent } from './video-card/video-card.component';
 import {RouterLink} from "@angular/router";
 import { CreateShowComponent } from './create-show/create-show.component';
 
+
 @NgModule({
   declarations: [
     HomeComponent,
