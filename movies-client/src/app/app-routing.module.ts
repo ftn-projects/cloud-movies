@@ -6,8 +6,8 @@ import {HomeComponent} from "./videos/home/home.component";
 import {VideoDetailsComponent} from "./videos/video-details/video-details.component";
 import {SubscriptionComponent} from "./subscription/subscription/subscription.component";
 import { ManageMovieComponent } from './videos/manage/manage-movie/manage-movie.component';
-import { ManageShowComponent } from './videos/manage/manage-show/manage-show.component';
 import { ManageEpisodeComponent } from './videos/manage/manage-episode/manage-episode.component';
+import { ManageShowComponent } from './videos/manage/manage-show/manage-show.component';
 
 const routes: Routes = [
   { path: '', component: HomeComponent },

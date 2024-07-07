@@ -6,6 +6,8 @@ import { UploadVideoComponent } from './upload-video/upload-video.component';
 import { ManageEpisodeComponent } from './manage-episode/manage-episode.component';
 import { ManageMovieComponent } from './manage-movie/manage-movie.component';
 import { ManageShowComponent } from './manage-show/manage-show.component';
+import { ReactiveFormsModule } from '@angular/forms';
+import { MaterialModule } from '../../material/material.module';
 
 
 
@@ -19,7 +21,9 @@ import { ManageShowComponent } from './manage-show/manage-show.component';
     ManageShowComponent
   ],
   imports: [
-    CommonModule
+    CommonModule,
+    MaterialModule,
+    ReactiveFormsModule
   ]
 })
 export class ManageModule { }
