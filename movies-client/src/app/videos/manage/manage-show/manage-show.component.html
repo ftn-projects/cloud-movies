@@ -1,6 +1,31 @@
-<h2><span *ngIf="!showId">Create</span><span *ngIf="showId">Edit</span> show</h2>
-<app-manage-basic-details></app-manage-basic-details>
-<app-manage-extended-details></app-manage-extended-details>
-<div id="manage-seasons">
-
+<div class="form-wrapper">
+    <h2 class="page-title"><span *ngIf="!showId">Create</span><span *ngIf="showId">Edit</span> show</h2>
+    <h4 class="page-subtitle">Details</h4>
+    <app-manage-basic-details></app-manage-basic-details>
+    <app-manage-extended-details></app-manage-extended-details>
+    <h4 class="page-subtitle">Seasons</h4>
+    <div class="manage-seasons">
+        <div *ngFor="let season of seasons.controls; let i = index" [formGroup]="getSeasonFormGroup(i)" class="season-section">
+            <div class="inline-section">
+                <mat-form-field style="flex-grow: 1;">
+                    <mat-label>Season Name</mat-label>
+                    <input matInput type="text" formControlName="seasonName" maxlength="64">
+                </mat-form-field>
+                <mat-form-field style="width: min-content;">
+                    <mat-label>Release Date</mat-label>
+                    <input matInput [matDatepicker]="picker" formControlName="releaseDate">
+                    <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                </mat-form-field>
+                <button mat-icon-button (click)="removeSeason(i)">
+                    <mat-icon>clear</mat-icon>
+                </button>
+            </div>
+        </div>
+        <button class="button add-season-button" mat-raised-button (click)="addSeason()" style="width: auto;">Add Season</button>
+    </div>
+    <div class="form-buttons">
+        <button class="button" style="color: white;" mat-button (click)="cancel()" *ngIf="showId">Cancel</button>
+        <button class="button" color="primary" mat-raised-button (click)="save()">Save</button>
+    </div>
 </div>

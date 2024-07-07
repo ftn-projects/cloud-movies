@@ -1,0 +1,8 @@
+.management-section {
+    height: fit-content;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+}

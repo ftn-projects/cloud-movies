@@ -1,0 +1,14 @@
+.management-section {
+    height: fit-content;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+.inline-section {
+    display: flex;
+    gap: 20px;
+    color: white;
+}

@@ -1,0 +1,30 @@
+.file-upload-container {
+  margin: auto;
+  color: white;
+}
+
+.file-drop-area {
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  background-color: #222831;
+}
+
+.file-drop-area:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.footer {
+  display: flex;
+  justify-content: left;
+  margin-top: 20px;
+  gap: 10px;
+}
+
+.footer p {
+  align-content: center;
+  margin: 0;
+}
