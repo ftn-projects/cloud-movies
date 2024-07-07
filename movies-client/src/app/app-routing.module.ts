@@ -4,16 +4,24 @@ import { LoginComponent } from "./auth/login/login.component";
 import { RegisterComponent } from "./auth/register/register.component";
 import {HomeComponent} from "./videos/home/home.component";
 import {VideoDetailsComponent} from "./videos/video-details/video-details.component";
-import { CreateShowComponent } from './videos/create-show/create-show.component';
 import {SubscriptionComponent} from "./subscription/subscription/subscription.component";
+import { ManageMovieComponent } from './videos/manage/manage-movie/manage-movie.component';
+import { ManageShowComponent } from './videos/manage/manage-show/manage-show.component';
+import { ManageEpisodeComponent } from './videos/manage/manage-episode/manage-episode.component';
 
 const routes: Routes = [
   { path: '', component: HomeComponent },
-  { path: "register", component: RegisterComponent },
-  { path: "login", component: LoginComponent },
-  { path: "video/:videoType/:videoId", component: VideoDetailsComponent },
-  { path: "createShow", component: CreateShowComponent},
-  { path: "subscriptions", component: SubscriptionComponent }
+  { path: 'register', component: RegisterComponent },
+  { path: 'login', component: LoginComponent },
+  { path: 'video/:videoType/:videoId', component: VideoDetailsComponent },
+  { path: "subscriptions", component: SubscriptionComponent },
+  /* Videos management */
+  { path: 'create/movie', component: ManageMovieComponent },
+  { path: 'edit/movie/:movieId', component: ManageMovieComponent },
+  { path: 'create/show', component: ManageShowComponent },
+  { path: 'edit/show/:showId', component: ManageShowComponent },
+  { path: 'create/episode/:showId/:season', component: ManageEpisodeComponent },
+  { path: 'edit/episode/:showId/:season/:episode', component: ManageEpisodeComponent }
 ];
 
 @NgModule({
