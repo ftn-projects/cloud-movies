@@ -65,13 +65,13 @@ export class ManageShowComponent {
     const extendedDetails = this.extendedDetailsComponent.detailsGroup.value;
     const seasons = this.seasonsGroup.value;
 
-    const showData = {
+    const show = {
       ...basicDetails,
       ...extendedDetails,
       seasons: seasons.seasons
     };
 
-    // this.contentService.saveContentMetadata(showData).subscribe(() => {
+    // this.contentService.saveContentMetadata(show).subscribe(() => {
     //   console.log('Show saved');
     // });
   }

@@ -1,4 +1,13 @@
-<h2><span *ngIf="!movieId">Create</span><span *ngIf="movieId">Edit</span> movie</h2>
-<app-manage-basic-details></app-manage-basic-details>
-<app-manage-extended-details></app-manage-extended-details>
-<app-upload-video></app-upload-video>
+<div class="form-wrapper">
+    <h2 class="page-title"><span *ngIf="!movieId">Create</span><span *ngIf="movieId">Edit</span> movie</h2>
+    <h4 class="page-subtitle">Details</h4>
+    <app-manage-basic-details></app-manage-basic-details>
+    <app-manage-extended-details></app-manage-extended-details>
+    <div class="form-buttons" *ngIf="movieId">
+        <button class="button" style="color: white;" mat-button (click)="cancel()">Cancel</button>
+        <button class="button" color="primary" mat-raised-button (click)="save()">Save details</button>
+    </div>
+    <h4 class="page-subtitle">Video</h4>
+    <app-upload-video [videoId]="movieId" [uploadButton]="movieId != null"></app-upload-video>
+    <button class="button" color="primary" mat-raised-button (click)="create()" *ngIf="!movieId" style="margin-top: 30px;">Create movie</button>
+</div>

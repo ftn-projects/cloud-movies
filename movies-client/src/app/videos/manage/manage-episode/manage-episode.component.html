@@ -1,3 +1,12 @@
-<h2><span *ngIf="create()">Create</span><span *ngIf="!create()">Edit</span> episode</h2>
-<app-manage-basic-details></app-manage-basic-details>
-<app-upload-video></app-upload-video>
+<div class="form-wrapper">
+    <h2 class="page-title"><span *ngIf="!episode">Create</span><span *ngIf="episode">Edit</span> episode</h2>
+    <h4 class="page-subtitle">Details</h4>
+    <app-manage-basic-details></app-manage-basic-details>
+    <div class="form-buttons" *ngIf="episode">
+        <button class="button" style="color: white;" mat-button (click)="cancel()">Cancel</button>
+        <button class="button" color="primary" mat-raised-button (click)="save()">Save details</button>
+    </div>
+    <h4 class="page-subtitle">Video</h4>
+    <app-upload-video [videoId]="showId" [season]="season" [episode]="episode" [uploadButton]="episode != null"></app-upload-video>
+    <button class="button" color="primary" mat-raised-button (click)="create()" *ngIf="!episode" style="margin-top: 30px;">Create episode</button>
+</div>

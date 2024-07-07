@@ -1,7 +1,9 @@
 <div class="form-wrapper">
     <h2 class="page-title"><span *ngIf="!showId">Create</span><span *ngIf="showId">Edit</span> show</h2>
+    <h4 class="page-subtitle">Details</h4>
     <app-manage-basic-details></app-manage-basic-details>
     <app-manage-extended-details></app-manage-extended-details>
+    <h4 class="page-subtitle">Seasons</h4>
     <div class="manage-seasons">
         <div *ngFor="let season of seasons.controls; let i = index" [formGroup]="getSeasonFormGroup(i)" class="season-section">
             <div class="inline-section">
@@ -20,7 +22,7 @@
                 </button>
             </div>
         </div>
-        <button class="button add-season-button" mat-raised-button (click)="addSeason()">Add Season</button>
+        <button class="button add-season-button" mat-raised-button (click)="addSeason()" style="width: auto;">Add Season</button>
     </div>
     <div class="form-buttons">
         <button class="button" style="color: white;" mat-button (click)="cancel()" *ngIf="showId">Cancel</button>
