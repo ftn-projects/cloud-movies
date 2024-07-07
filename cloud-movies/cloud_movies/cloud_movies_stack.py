@@ -23,6 +23,7 @@ VIDEOS_TABLE = 'videosTable'
 REVIEWS_TABLE = 'reviewsTable'
 SUBSCRIPTIONS_TABLE = 'subscriptionsTable'
 FEEDS_TABLE = 'feedsTable'
+RATINGS_TABLE = 'ratingTable'
 
 SOURCE_BUCKET = 'sourceBucket'
 PUBLISH_BUCKET = 'publishBucket'
@@ -68,8 +69,16 @@ class CloudMoviesStack(Stack):
 
         self.subscriptions_table = dynamodb.Table(
             self, SUBSCRIPTIONS_TABLE,
-            partition_key=dynamodb.Attribute(name='id', type=dynamodb.AttributeType.STRING),
+            partition_key=dynamodb.Attribute(name='userId', type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name='subscriptionType',type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY
+        )
+        
+        self.ratings_table = dynamodb.Table(
+            self, RATINGS_TABLE,
+            partition_key=dynamodb.Attribute(name='userId', type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name='contentId', type=dynamodb.AttributeType.STRING),
+            removal_policy=RemovalPolicy.DESTROY 
         )
 
         # S3 Buckets
@@ -229,7 +238,7 @@ class CloudMoviesStack(Stack):
         list_videos_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.videos_table.grant_read_data(list_videos_lambda)
 
-        find_video_lambda = create_lambda(self, 'findVideoLambda', 'get_details', 'get_details.handler')
+        find_video_lambda = create_lambda(self, 'findVideoLambda', 'get_details', 'get_details.handler', layers=[self.utils_layer])
         find_video_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.videos_table.grant_read_data(find_video_lambda)
 
@@ -237,10 +246,9 @@ class CloudMoviesStack(Stack):
         query_videos_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.videos_table.grant_read_data(query_videos_lambda)
 
-        list_subscriptions_lambda = create_lambda(self, 'listSubscriptionsLambda', 'list_subscriptions', 'list_subscriptions.handler')
+        list_subscriptions_lambda = create_lambda(self, 'listSubscriptionsLambda', 'list_subscriptions', 'list_subscriptions.handler', layers=[self.utils_layer])
         list_subscriptions_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
         self.subscriptions_table.grant_read_data(list_subscriptions_lambda)
-
 
         stream_lambda = create_lambda(self, 'streamLambda', 'stream_video', 'stream_video.handler', layers=[self.utils_layer])
         stream_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
@@ -252,6 +260,18 @@ class CloudMoviesStack(Stack):
             actions=['s3:*'],
             resources=[f"{self.publish_bucket.bucket_arn}/*"]
         ))
+
+        subscribe_lambda = create_lambda(self, 'subscribeLambda', 'subscribe', 'subscribe.handler', layers=[self.utils_layer])
+        subscribe_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
+        self.subscriptions_table.grant_read_write_data(subscribe_lambda)
+
+        unsubscribe_lambda = create_lambda(self, 'unsubcribeLambda', 'unsubscribe', 'unsubscribe.handler', layers=[self.utils_layer])
+        unsubscribe_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
+        self.subscriptions_table.grant_read_write_data(unsubscribe_lambda)
+
+        rate_content_lambda = create_lambda(self, 'rateContentLambda', 'rate_content', 'rate_content.handler', layers=[self.utils_layer])
+        rate_content_lambda.add_environment('RATINGS_TABLE', self.ratings_table.table_name)
+        self.ratings_table.grant_read_write_data(rate_content_lambda)
 
         # Create API Gateway
         api = apigateway.RestApi(self, API_GATEWAY)
@@ -265,29 +285,54 @@ class CloudMoviesStack(Stack):
         download_resource = api.root.add_resource('download').add_resource('{videoId}')
         download_resource.add_method('GET', download_integration)
 
-        videos_resource = api.root.add_resource('videos')
-        subscriptions_resource = api.root.add_resource('subscriptions')
+        content_resource = api.root.add_resource('content')
+        videos_resource = api.root.add_resource('video')
+        subscriptions_resource = api.root.add_resource('subscription')
+        rating_resource = api.root.add_resource('ratings')
+        sub_user_id_resource = subscriptions_resource.add_resource('{userId}', 
+                                                                    default_cors_preflight_options=apigateway.CorsOptions(
+                                                                    allow_methods=apigateway.Cors.ALL_METHODS,
+                                                                    allow_origins=apigateway.Cors.ALL_ORIGINS
+                                                                    ))
 
-        # GET /videos
+        # GET /content - admin
         list_videos_integration = apigateway.LambdaIntegration(list_videos_lambda)
-        videos_resource.add_method('GET', list_videos_integration)
+        content_resource.add_method('GET', list_videos_integration)
 
-        # GET /videos/{videoId}?season={season}&episode={episode}
+        # GET /content/{videoId} - anyone
         find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
-        video_id_res = videos_resource.add_resource('{videoId}')
-        video_id_res.add_method('GET', find_video_integration)
+        content_id_res = content_resource.add_resource('{videoId}')
+        content_id_res.add_method('GET', find_video_integration)
 
-        # GET /videos/query
+        # GET /content/query
         query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)
         videos_resource.add_resource('query').add_method('GET', query_videos_integration)
 
-        # GET /subscriptions
+        # GET /subscription/{userId (orEmail)}
         list_subscriptions_integration = apigateway.LambdaIntegration(list_subscriptions_lambda)
-        subscriptions_resource.add_method('GET', list_subscriptions_integration)
+        sub_user_id_resource.add_method('GET', list_subscriptions_integration)
 
-        # GET /videos/{videoId}/{videoType}/{resolution}
+        # POST /subscription/{userId}
+        subscribe_integration = apigateway.LambdaIntegration(subscribe_lambda)
+        sub_user_id_resource.add_method('POST', subscribe_integration)
+
+        # DELETE /subscription/{userId}
+        unsubscribe_integration = apigateway.LambdaIntegration(unsubscribe_lambda)
+        sub_user_id_resource.add_resource('{type}').add_resource('{name}').add_method('DELETE', unsubscribe_integration)
+
+        # GET /video/{videoId}/{resolution}?season=1&episode=2
         stream_integration = apigateway.LambdaIntegration(stream_lambda)
-        video_id_res.add_resource('{videoType}').add_resource('{resolution}').add_method('GET', stream_integration)
+        video_id_resource = videos_resource.add_resource('{videoId}')
+        video_id_resource.add_resource('{resolution}').add_method('GET', stream_integration)
+
+        rating_integration = apigateway.LambdaIntegration(rate_content_lambda)
+        rating_user_id_resource = rating_resource.add_resource('{user_id}', 
+                                                                    default_cors_preflight_options=apigateway.CorsOptions(
+                                                                    allow_methods=apigateway.Cors.ALL_METHODS,
+                                                                    allow_origins=apigateway.Cors.ALL_ORIGINS
+                                                                    ))
+        rating_user_id_resource.add_method('POST', rating_integration)
+
         return api
 
 

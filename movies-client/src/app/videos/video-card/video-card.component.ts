@@ -28,7 +28,7 @@ export class VideoCardComponent implements OnInit{
   }
 
   onCardClick(){
-    this.router.navigate(['/video', this.content?.videoType, this.content?.videoId]);
+    this.router.navigate(['/video', this.content?.videoId]);
   }
 
   getYear(): number {
