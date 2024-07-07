@@ -8,6 +8,7 @@ import {MaterialModule} from "./material/material.module";
 import {AuthModule} from "./auth/auth.module";
 import {VideosModule} from "./videos/videos.module";
 import { HttpClientModule, HTTP_INTERCEPTORS } from "@angular/common/http";
+import {SubscriptionModule} from "./subscription/subscription.module";
 
 @NgModule({
   declarations: [
@@ -19,7 +20,8 @@ import { HttpClientModule, HTTP_INTERCEPTORS } from "@angular/common/http";
     AuthModule,
     VideosModule,
     MaterialModule,
-    HttpClientModule
+    HttpClientModule,
+    SubscriptionModule,
   ],
   providers: [
     provideAnimationsAsync(),
