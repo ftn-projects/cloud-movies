@@ -7,7 +7,6 @@ import {HttpClient} from "@angular/common/http";
   providedIn: 'root'
 })
 export class MovieService {
-
   constructor(private http: HttpClient) { }
 
 
@@ -15,4 +14,7 @@ export class MovieService {
     return this.http.get<string>(environments.api + `/video/${videoId}/${resolution}`);
   }
 
+  deleteMovie(movieId: string): Observable<void> {
+    return this.http.delete<void>(environments.api + `/movie/${movieId}`);
+  }
 }

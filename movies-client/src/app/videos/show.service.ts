@@ -8,9 +8,7 @@ import {HttpClient, HttpParams} from "@angular/common/http";
   providedIn: 'root'
 })
 export class ShowService {
-
   constructor(private http: HttpClient) { }
-
 
   getSeasons(videoId: string): Observable<string[]> {
     return this.http.get<string[]>(environments.api + `/show/${videoId}/season`)
@@ -28,5 +26,41 @@ export class ShowService {
 
   getSeasonsWithEpisodes(showId: string): Observable<any> {
     return this.http.get<any>(environments.api + `/show/${showId}/seasonDetails`);
+  }
+
+  createShow(details: any): Observable<string> {
+    return this.http.post<string>(environments.api + `/show`, details);
+  }
+
+  deleteShow(showId: string): Observable<void> {
+    return this.http.delete<void>(environments.api + `/show/${showId}`);
+  }
+
+  addSeason(showId: string, title: any, releaseDate: any): Observable<any> {
+    return this.http.post(environments.api + `/show/${showId}`, {title, releaseDate});
+  }
+
+  deleteSeason(showId: string, season: any): Observable<void> {
+    return this.http.delete<void>(environments.api + `/show/${showId}/${season}`);
+  }
+
+  swapSeasons(showId: string, first: number, second: number): Observable<void> {
+    return this.http.put<void>(environments.api + `/show/${showId}/swapSeason`, {first, second});
+  }
+
+  swapEpisodes(showId: string, season: number, first: number, second: number): Observable<void> {
+    return this.http.put<void>(environments.api + `/show/${showId}/${season}/swapEpisode`, {first, second});
+  }
+
+  deleteEpisode(showId: string, season: number, episode: number): Observable<void>{
+    return this.http.delete<void>(environments.api + `/show/${showId}/${season}/${episode}`);
+  }
+
+  saveEpisodeDetails(showId: string, season: number, episode: number, details: any): Observable<any> {
+    return this.http.put(environments.api + `/show/${showId}/${season}/${episode}`, details);
+  }
+
+  getEpisodeDetails(showId: string, season: number, episode: number): Observable<any> {
+    return this.http.get<any>(environments.api + `/show/${showId}/${season}/${episode}`);
   }
 }

@@ -1,9 +1,9 @@
 import json
 import os
 import boto3
-import utils
 from botocore.config import Config
 from boto3.dynamodb.conditions import Key
+
 
 def handler(event, context):
     dynamodb = boto3.resource('dynamodb')
@@ -14,10 +14,9 @@ def handler(event, context):
     table = dynamodb.Table(table_name)
 
     show_id = json.loads(event['pathParameters']['showId'])
-    season = json.loads(event['pathParameters']['season'])
-    
+
     response = table.query(
-        KeyConditionExpression=Key('videoId').eq(show_id) & Key('videoType').begins_with(f'SHOW::S{season:02d}')
+        KeyConditionExpression=Key('videoId').eq(show_id) & Key('videoType').begins_with('SHOW')
     )
 
     episodes = response['Items']
@@ -33,4 +32,10 @@ def handler(event, context):
         key = {'videoId': show_id, 'videoType': show['videoType']}
         table.delete_item(Key=key)
 
-    return utils.create_response(204,'')
+    return { 
+        'statusCode': 204, 
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+        },
+        'body': json.dumps({}, default=str)
+    }

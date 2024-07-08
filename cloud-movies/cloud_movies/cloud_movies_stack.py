@@ -1,5 +1,11 @@
 from constructs import Construct
-from .create_lambda import create_lambda, create_lambda_layer, create_python_lambda_layer, create_lambda_with_req
+from .create_lambda import (
+    create_lambda, 
+    create_lambda_layer, 
+    create_python_lambda_layer, 
+    create_lambda_integration,
+    create_lambda_with_req
+)
 from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
@@ -116,7 +122,6 @@ class CloudMoviesStack(Stack):
 
         self.__create_source_upload_processing_workflow()
         self.__create_source_upload_processing_cleanup()
-        self.__create_published_video_verification()
 
         self.__create_user_pool()
         self.__create_api_gateway()
@@ -199,41 +204,22 @@ class CloudMoviesStack(Stack):
 
 
     def __create_source_upload_processing_cleanup(self) -> None:
-        cleanup_lambda = create_lambda(self, 'cleanupVideoLambda', 'cleanup_video', 'cleanup_video.handler')
+        cleanup_lambda = create_lambda(self, 'handle_processing_result')
+        cleanup_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         cleanup_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         cleanup_lambda.add_environment('RESOLUTIONS', ','.join(VIDEO_RESOLUTIONS))
-        cleanup_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         self.publish_bucket.grant_read(cleanup_lambda)
         self.publish_bucket.grant_delete(cleanup_lambda)
         self.videos_table.grant_read_write_data(cleanup_lambda)
         self.source_bucket.grant_delete(cleanup_lambda)
         self.source_upload_processing_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_lambda))
 
-    
-    def __create_published_video_verification(self) -> None:
-        verify_published_video_file_lambda = create_lambda(self, 'verifyPublishedVideoLambda', 'verify_published_video_file', 'verify_published_video_file.handler')
-        verify_published_video_file_lambda.add_environment('VIDEOS_TABLE', VIDEOS_TABLE)
-        self.videos_table.grant_read_data(verify_published_video_file_lambda)
-        
-        self.source_bucket.grant_delete(verify_published_video_file_lambda)
-
-        # verify_published_video_file_lambda.add_event_source(lambda_event_sources.S3EventSource(
-        #     bucket=self.publish_bucket,
-        #     events=[s3.EventType.OBJECT_CREATED],
-        # ))
-        
 
     def __create_api_gateway(self) -> apigateway.RestApi:
         upload_lambda = create_lambda(self, 'uploadVideoLambda', 'upload_video', 'upload_video.handler')
         upload_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         self.source_bucket.grant_put(upload_lambda)
-
-        download_lambda = create_lambda(self, 'downloadVideoLambda', 'download_video', 'download_video.handler')
-        download_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
-        download_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
-        self.source_bucket.grant_read(download_lambda)
-        self.videos_table.grant_read_data(download_lambda)
 
         list_videos_lambda = create_lambda(self, 'listVideosLambda', 'list_videos', 'list_videos.handler', layers=[self.utils_layer])
         list_videos_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
@@ -274,6 +260,7 @@ class CloudMoviesStack(Stack):
         rate_content_lambda.add_environment('RATINGS_TABLE', self.ratings_table.table_name)
         self.ratings_table.grant_read_write_data(rate_content_lambda)
 
+
         # Create API Gateway
         api = apigateway.RestApi(self, API_GATEWAY)
 
@@ -288,24 +275,26 @@ class CloudMoviesStack(Stack):
             identity_source='method.request.header.Authorization',
             results_cache_ttl=Duration.seconds(0)
         )
-        # GET /uploadurl
-        upload_integration = apigateway.LambdaIntegration(upload_lambda)
-        api.root.add_resource('uploadurl').add_method('GET', upload_integration)
-
-        # GET /download/{videoId}?resolution={resolution}&season={season}&episode={episode}
-        download_integration = apigateway.LambdaIntegration(download_lambda)
-        download_resource = api.root.add_resource('download').add_resource('{videoId}')
-        download_resource.add_method('GET', download_integration)
-
         content_resource = api.root.add_resource('content')
         videos_resource = api.root.add_resource('video')
+        movies_resource = api.root.add_resource('movie')
+
+        show_resource = api.root.add_resource('show')
+        show_id_resource = show_resource.add_resource('{showId}')
+        season_id_resource = show_id_resource.add_resource('{season}')
+        episode_id_resource = season_id_resource.add_resource('{episode}')
+
         subscriptions_resource = api.root.add_resource('subscription')
         rating_resource = api.root.add_resource('ratings')
-        sub_user_id_resource = subscriptions_resource.add_resource('{userId}', 
-                                                                    default_cors_preflight_options=apigateway.CorsOptions(
-                                                                    allow_methods=apigateway.Cors.ALL_METHODS,
-                                                                    allow_origins=apigateway.Cors.ALL_ORIGINS
-                                                                    ))
+        sub_user_id_resource = subscriptions_resource.add_resource(
+            '{userId}', default_cors_preflight_options=apigateway.CorsOptions(
+                allow_methods=apigateway.Cors.ALL_METHODS,
+                allow_origins=apigateway.Cors.ALL_ORIGINS
+            ))
+
+        # GET /upload
+        upload_video_integration = apigateway.LambdaIntegration(upload_lambda)
+        api.root.add_resource('upload').add_method('GET', upload_video_integration)
 
         # GET /content - admin
         list_videos_integration = apigateway.LambdaIntegration(list_videos_lambda)
@@ -332,7 +321,7 @@ class CloudMoviesStack(Stack):
         unsubscribe_integration = apigateway.LambdaIntegration(unsubscribe_lambda)
         sub_user_id_resource.add_resource('{type}').add_resource('{name}').add_method('DELETE', unsubscribe_integration)
 
-        # GET /video/{videoId}/{resolution}?season=1&episode=2
+        # GET /video/{videoId}/{resolution}?season=1&episode=2 - stream/download video
         stream_integration = apigateway.LambdaIntegration(stream_lambda)
         video_id_resource = videos_resource.add_resource('{videoId}')
         video_id_resource.add_resource('{resolution}').add_method('GET', stream_integration)
@@ -345,15 +334,91 @@ class CloudMoviesStack(Stack):
                                                                     ))
         rating_user_id_resource.add_method('POST', rating_integration)
         
-        api.root.add_resource('user').add_method('GET', 
-                                                 apigateway.MockIntegration(),
-                                                 authorization_type=apigateway.AuthorizationType.CUSTOM,
-                                                 authorizer=authorizer)
+        # GET /show/{showId}/seasonDetails - seasons with episodes
+        show_id_resource.add_resource('seasonDetails').add_method('GET', create_lambda_integration(
+            self, 'get_season_details', 
+            env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[self.videos_table.grant_read_data]
+        ))
 
-        api.root.add_resource('admin').add_method('GET',
-                                                 apigateway.MockIntegration(),
-                                                 authorization_type=apigateway.AuthorizationType.CUSTOM,
-                                                 authorizer=authorizer)
+        # GET /show/{showId}/{season}/{episode} - episode details
+        episode_id_resource.add_method('GET', create_lambda_integration(
+            self, 'get_episode_details',
+            env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[self.videos_table.grant_read_data]
+        ))
+
+        # POST /show - create show
+        show_resource.add_method('POST', create_lambda_integration(
+            self, 'create_show',
+            env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[self.videos_table.grant_read_write_data]
+        ))
+
+        # POST /show/{showId} - create season
+        show_id_resource.add_method('POST', create_lambda_integration(
+            self, 'create_season',
+            env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[self.videos_table.grant_read_write_data]
+        ))
+
+        # PUT /content/{videoId} - update show/movie details
+        content_resource.add_resource('{videoId}').add_method('PUT', create_lambda_integration(
+            self, 'edit_details',
+            env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[self.videos_table.grant_read_write_data]
+        ))
+    
+        # PUT /show/{showId}/{season}/{episode} - update episode
+        season_id_resource.add_method('PUT', create_lambda_integration(
+            self, 'edit_episode',
+            env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[self.videos_table.grant_read_write_data]
+        ))
+
+        # DELETE /show/{showId}
+        show_id_resource.add_method('DELETE', create_lambda_integration(
+            self, 'delete_show',
+            env_vars=[
+                ('VIDEOS_TABLE', self.videos_table.table_name), 
+                ('PUBLISH_BUCKET', self.publish_bucket.bucket_name)],
+            permissions=[
+                self.videos_table.grant_read_write_data, 
+                self.publish_bucket.grant_delete]
+        ))
+
+        # DELETE /show/{showId}/{season}
+        season_id_resource.add_method('DELETE', create_lambda_integration(
+            self, 'delete_season',
+            env_vars=[
+                ('VIDEOS_TABLE', self.videos_table.table_name),
+                ('PUBLISH_BUCKET', self.publish_bucket.bucket_name)],
+            permissions=[
+                self.videos_table.grant_read_write_data,
+                self.publish_bucket.grant_delete]
+        ))
+
+        # DELETE /show/{showId}/{season}/{episode}
+        episode_id_resource.add_method('DELETE', create_lambda_integration(
+            self, 'delete_episode',
+            env_vars=[
+                ('VIDEOS_TABLE', self.videos_table.table_name),
+                ('PUBLISH_BUCKET', self.publish_bucket.bucket_name)],
+            permissions=[
+                self.videos_table.grant_read_write_data,
+                self.publish_bucket.grant_delete]
+        ))
+
+        # DELETE /movie/{movieId}
+        movies_resource.add_resource('{movieId}').add_method('DELETE', create_lambda_integration(
+            self, 'delete_movie',
+            env_vars=[
+                ('VIDEOS_TABLE', self.videos_table.table_name),
+                ('PUBLISH_BUCKET', self.publish_bucket.bucket_name)],
+            permissions=[
+                self.videos_table.grant_read_write_data,
+                self.publish_bucket.grant_delete]
+        ))
 
         return api
 
