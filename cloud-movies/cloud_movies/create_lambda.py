@@ -1,7 +1,8 @@
 from os import path
 from aws_cdk import (
     aws_lambda as _lambda,
-    Duration
+    Duration,
+    BundlingOptions
 )
 from aws_cdk.aws_lambda_python_alpha import PythonLayerVersion
 
@@ -55,3 +56,22 @@ def create_python_lambda_layer(scope, id, entry):
             entry=entry,
             compatible_runtimes=[RUNTIME]
         )
+
+def create_lambda_with_req(scope, id, include_dir, handler, timeout=10, memory=128, layers=[]):
+    return _lambda.Function(
+        scope, id,
+        code=_lambda.Code.from_asset(
+            path.join(LAMBDAS_HOME, include_dir),
+            bundling=BundlingOptions(
+                image=_lambda.Runtime.PYTHON_3_9.bundling_image,
+                command=[
+                    'bash', '-c',
+                    'pip install --no-cache -r requirements.txt -t /asset-output && cp -r . /asset-output'
+                ]
+            )),
+        handler=handler,
+        runtime=RUNTIME,
+        layers=layers,
+        timeout=Duration.seconds(timeout),
+        memory_size=memory
+    )

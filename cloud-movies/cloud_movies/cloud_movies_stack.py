@@ -1,5 +1,5 @@
 from constructs import Construct
-from .create_lambda import create_lambda, create_lambda_layer, create_python_lambda_layer
+from .create_lambda import create_lambda, create_lambda_layer, create_python_lambda_layer, create_lambda_with_req
 from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
@@ -13,7 +13,8 @@ from aws_cdk import (
     aws_iam as iam,
     RemovalPolicy,
     CfnOutput,
-    Stack
+    Duration,
+    Stack,
 )
 
 
@@ -117,8 +118,8 @@ class CloudMoviesStack(Stack):
         self.__create_source_upload_processing_cleanup()
         self.__create_published_video_verification()
 
-        self.__create_api_gateway()
         self.__create_user_pool()
+        self.__create_api_gateway()
 
 
     def __create_source_upload_processing_workflow(self) -> None:
@@ -276,6 +277,17 @@ class CloudMoviesStack(Stack):
         # Create API Gateway
         api = apigateway.RestApi(self, API_GATEWAY)
 
+        authorizer_lambda = create_lambda_with_req(self, 'authorizerLambda', 'authorizer', 'authorizer.handler')
+        authorizer_lambda.add_environment('REGION', self.region)
+        authorizer_lambda.add_environment('USER_POOL_ID', self.user_pool_id)
+        authorizer_lambda.add_environment('COGNITO_CLIENT_ID', self.user_pool_client_id)
+
+        authorizer = apigateway.TokenAuthorizer(
+            self, 'CustomAuthorizer',
+            handler=authorizer_lambda,
+            identity_source='method.request.header.Authorization',
+            results_cache_ttl=Duration.seconds(0)
+        )
         # GET /uploadurl
         upload_integration = apigateway.LambdaIntegration(upload_lambda)
         api.root.add_resource('uploadurl').add_method('GET', upload_integration)
@@ -332,6 +344,16 @@ class CloudMoviesStack(Stack):
                                                                     allow_origins=apigateway.Cors.ALL_ORIGINS
                                                                     ))
         rating_user_id_resource.add_method('POST', rating_integration)
+        
+        api.root.add_resource('user').add_method('GET', 
+                                                 apigateway.MockIntegration(),
+                                                 authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                 authorizer=authorizer)
+
+        api.root.add_resource('admin').add_method('GET',
+                                                 apigateway.MockIntegration(),
+                                                 authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                 authorizer=authorizer)
 
         return api
 
@@ -439,7 +461,6 @@ class CloudMoviesStack(Stack):
         admin_group.role_arn = admin_role.role_arn
         user_group.role_arn = user_role.role_arn
 
-        
         attach_role_lambda.role.attach_inline_policy(
             iam.Policy(self, 'userpool-policy',
                            statements=[iam.PolicyStatement(
@@ -447,6 +468,9 @@ class CloudMoviesStack(Stack):
                                resources=[pool.user_pool_arn]
                             )]))
         
+
+        self.user_pool_id = pool.user_pool_id
+        self.user_pool_client_id = client.user_pool_client_id
         CfnOutput(self, 'UserPoolId', value=pool.user_pool_id)
         CfnOutput(self, 'UserPoolClientId', value=client.user_pool_client_id)
         CfnOutput(self, 'UserPoolDomain', value=pool_domain.domain_name)
