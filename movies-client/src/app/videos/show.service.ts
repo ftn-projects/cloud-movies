@@ -25,4 +25,8 @@ export class ShowService {
     params.set('episode', episode);
     return this.http.get<string>(environments.api + `/video/${videoId}/${resolution}`, {params: params});
   }
+
+  getSeasonsWithEpisodes(showId: string): Observable<any> {
+    return this.http.get<any>(environments.api + `/show/${showId}/seasonDetails`);
+  }
 }

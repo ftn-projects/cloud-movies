@@ -1,74 +1,65 @@
-import { Component, Input, ViewChild } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup } from '@angular/forms';
+import { Component, ViewChild } from '@angular/core';
+import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ContentService } from '../../content.service';
 import { ManageBasicDetailsComponent } from '../manage-basic-details/manage-basic-details.component';
 import { ManageExtendedDetailsComponent } from '../manage-extended-details/manage-extended-details.component';
+import { ShowService } from '../../show.service';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-manage-show',
   templateUrl: './manage-show.component.html',
-  styleUrl: './manage-show.component.css',
+  styleUrls: ['./manage-show.component.css'],
   providers: [provideNativeDateAdapter()]
 })
 export class ManageShowComponent {
   protected showId?: string;
-  protected seasonsGroup: FormGroup;
+  protected createSeason: FormGroup = new FormGroup({
+    seasonName: new FormControl('', [Validators.required]),
+    releaseDate: new FormControl('', [Validators.required])
+  });
+  get titleInput() { return this.createSeason.get('seasonName')?.value; }
+  get releaseDateInput() { return this.createSeason.get('releaseDate')?.value; }
+
+  protected seasonDetails: any[] = [];
 
   @ViewChild(ManageBasicDetailsComponent) basicDetailsComponent!: ManageBasicDetailsComponent;
   @ViewChild(ManageExtendedDetailsComponent) extendedDetailsComponent!: ManageExtendedDetailsComponent;
 
   constructor(
-    private activatedroute: ActivatedRoute, 
+    private activatedroute: ActivatedRoute,
     private formBuilder: FormBuilder,
-    private contentService: ContentService
+    private contentService: ContentService,
+    private showService: ShowService,
+    private router: Router
   ) {
-    this.seasonsGroup = this.formBuilder.group({
-      seasons: this.formBuilder.array([])
-    });
   }
 
   ngOnInit() {
     this.activatedroute.params.subscribe(params => {
       this.showId = params['showId'];
-      this.loadData();
+      this.loadDetails();
+      this.loadSeasons();
     });
   }
 
-  get seasons(): FormArray {
-    return this.seasonsGroup.get('seasons') as FormArray;
+  createShow() {
+    throw new Error('Method not implemented.');
   }
 
-  getSeasonFormGroup(index: number): FormGroup {
-    return this.seasons.at(index) as FormGroup;
+  cancelDetails() {
+    this.loadDetails();
   }
 
-  addSeason(seasonName: string = '', releaseDate: string = '') {
-    const seasonForm = this.formBuilder.group({
-      seasonName: seasonName,
-      releaseDate: releaseDate,
-    });
-    this.seasons.push(seasonForm);
-  }
-
-  removeSeason(index: number) {
-    this.seasons.removeAt(index);
-  }
-
-  cancel() {
-    this.loadData();
-  }
-
-  save() {
+  updateDetails() {
     const basicDetails = this.basicDetailsComponent.detailsGroup.value;
     const extendedDetails = this.extendedDetailsComponent.detailsGroup.value;
-    const seasons = this.seasonsGroup.value;
 
     const show = {
       ...basicDetails,
       ...extendedDetails,
-      seasons: seasons.seasons
     };
 
     // this.contentService.saveContentMetadata(show).subscribe(() => {
@@ -76,19 +67,61 @@ export class ManageShowComponent {
     // });
   }
 
-  loadData() {
+  loadDetails() {
     if (!this.showId) return;
 
     this.contentService.getContentMetadata(this.showId).subscribe(show => {
       this.basicDetailsComponent.loadData(show.title, show.description, show.releaseDate);
       this.extendedDetailsComponent.loadData(show.genres, show.actors, show.directors);
     });
+  }
 
-    // this.contentService.getSeasons(this.showId).subscribe(seasons => {
-    //   this.seasons.clear();
-    //   seasons.forEach(season => {
-    //     this.addSeason(season.seasonName, season.releaseDate);
-    //   });
+  loadSeasons() {
+    if (!this.showId) return;
+
+    this.showService.getSeasonsWithEpisodes(this.showId).subscribe((seasons: any[]) => {
+      this.seasonDetails = seasons;
+    });
+  }
+
+  addSeason() {
+    const seasonName = this.titleInput;
+    const releaseDate = this.releaseDateInput;
+    if (seasonName && releaseDate) {
+      this.seasonDetails.push({ seasonName, releaseDate, episodes: [] });
+      this.createSeason.reset();
+    }
+  }
+
+  deleteSeason(index: number) {
+    this.seasonDetails.splice(index, 1);
+  }
+
+  getEpisodesForSeason(index: number) {
+    return this.seasonDetails[index].episodes;
+  }
+
+  addEpisode(seasonIndex: number) {
+    this.router.navigate([`/create/episode/${this.showId}/${seasonIndex}`]);
+  }
+
+  editEpisode(episodeIndex: number, seasonIndex: number) {
+    this.router.navigate([`/edit/episode/${this.showId}/${seasonIndex}/${episodeIndex}`]);
+  }
+
+  deleteEpisode(episodeIndex: number, seasonIndex: number) {
+    this.seasonDetails[seasonIndex].episodes.splice(episodeIndex, 1);
+  }
+
+  deleteShow() {
+    // call api to delete
+  }
+
+  dropSeason(event: CdkDragDrop<string[]>) {
+    moveItemInArray(this.seasonDetails, event.previousIndex, event.currentIndex);
+
+    // Update the season numbers in the service
+    // this.showService.swapSeason(this.showId!, this.originalSeasonOrder, this.seasonDetails).subscribe(() => {
     // });
   }
 }

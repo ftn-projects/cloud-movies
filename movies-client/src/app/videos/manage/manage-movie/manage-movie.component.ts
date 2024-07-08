@@ -25,11 +25,11 @@ export class ManageMovieComponent {
   @ViewChild(ManageBasicDetailsComponent) basicDetailsComponent!: ManageBasicDetailsComponent;
   @ViewChild(ManageExtendedDetailsComponent) extendedDetailsComponent!: ManageExtendedDetailsComponent;
 
-  cancel() {
+  cancelDetails() {
     this.loadData();
   }
 
-  save() {
+  updateDetails() {
     const basicDetails = this.basicDetailsComponent.detailsGroup.value;
     const extendedDetails = this.extendedDetailsComponent.detailsGroup.value;
 
@@ -43,7 +43,7 @@ export class ManageMovieComponent {
     // });
   }
 
-  create() {
+  createMovie() {
   }
 
   loadData() {
@@ -53,5 +53,9 @@ export class ManageMovieComponent {
       this.basicDetailsComponent.loadData(movie.title, movie.description, movie.releaseDate);
       this.extendedDetailsComponent.loadData(movie.genres, movie.actors, movie.directors);
     });
+  }
+
+  deleteMovie() {
+    
   }
 }

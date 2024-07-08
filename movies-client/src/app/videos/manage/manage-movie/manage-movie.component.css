@@ -33,3 +33,8 @@
     gap: 20px;
     color: white;
 }
+
+.delete-button:not(:disabled) {
+    width: 200px;
+    border: 0px;
+}

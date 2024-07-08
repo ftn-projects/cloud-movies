@@ -8,6 +8,8 @@ import { ManageMovieComponent } from './manage-movie/manage-movie.component';
 import { ManageShowComponent } from './manage-show/manage-show.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MaterialModule } from '../../material/material.module';
+import { RouterModule } from '@angular/router';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 
 
@@ -23,7 +25,9 @@ import { MaterialModule } from '../../material/material.module';
   imports: [
     CommonModule,
     MaterialModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    RouterModule,
+    DragDropModule
   ]
 })
 export class ManageModule { }

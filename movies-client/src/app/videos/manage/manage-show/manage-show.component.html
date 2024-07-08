@@ -3,29 +3,49 @@
     <h4 class="page-subtitle">Details</h4>
     <app-manage-basic-details></app-manage-basic-details>
     <app-manage-extended-details></app-manage-extended-details>
-    <h4 class="page-subtitle">Seasons</h4>
-    <div class="manage-seasons">
-        <div *ngFor="let season of seasons.controls; let i = index" [formGroup]="getSeasonFormGroup(i)" class="season-section">
-            <div class="inline-section">
-                <mat-form-field style="flex-grow: 1;">
-                    <mat-label>Season Name</mat-label>
-                    <input matInput type="text" formControlName="seasonName" maxlength="64">
-                </mat-form-field>
-                <mat-form-field style="width: min-content;">
-                    <mat-label>Release Date</mat-label>
-                    <input matInput [matDatepicker]="picker" formControlName="releaseDate">
-                    <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-                    <mat-datepicker #picker></mat-datepicker>
-                </mat-form-field>
-                <button mat-icon-button (click)="removeSeason(i)">
-                    <mat-icon>clear</mat-icon>
+    <div class="form-buttons" *ngIf="showId">
+        <button style="color: white;" mat-button (click)="cancelDetails()">Cancel</button>
+        <button color="primary" mat-raised-button (click)="updateDetails()">Update details</button>
+    </div>
+    <div class="form-buttons" *ngIf="!showId">
+        <button color="primary" mat-raised-button (click)="createShow()">Create show</button>
+    </div>
+    <h4 class="page-subtitle" *ngIf="showId">Seasons</h4>
+    <div class="manage-seasons" *ngIf="showId" cdkDropList (cdkDropListDropped)="dropSeason($event)">
+      <form class="inline-section" [formGroup]="createSeason">
+        <mat-form-field style="flex-grow: 1;">
+            <mat-label>Season name</mat-label>
+            <input matInput type="text" formControlName="seasonName" maxlength="64">
+        </mat-form-field>
+        <mat-form-field style="width: min-content;">
+            <mat-label>Release date</mat-label>
+            <input matInput [matDatepicker]="picker" formControlName="releaseDate">
+            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+        <button class="add-season-button" mat-raised-button (click)="addSeason()">Add season</button>
+      </form>
+      <div *ngFor="let season of seasonDetails; let i = index" class="season-section" cdkDrag>
+        <div class="inline-section">
+          <mat-icon class="drag-icon">drag_indicator</mat-icon>
+            <p style="flex-grow: 1; font-size:medium;">{{ season.seasonName }}</p>
+            <p>{{ season.releaseDate | date:'MM/dd/yyyy' }}</p>
+            <button mat-icon-button (click)="deleteSeason(i)">
+                <mat-icon>clear</mat-icon>
+            </button>
+        </div>
+        <div *ngFor="let episode of getEpisodesForSeason(i); let j = index" class="episode-section">
+            <div class="inline-section episode" [routerLink]="['/edit/episode/'+showId+'/'+(i+1)+'/'+(j+1)]">
+                <p>{{ episode.title }}</p>
+                <p>{{ episode.releaseDate }}</p>
+                <button mat-icon-button (click)="deleteEpisode(i, j)">
+                <mat-icon>clear</mat-icon>
                 </button>
             </div>
         </div>
-        <button class="button add-season-button" mat-raised-button (click)="addSeason()" style="width: auto;">Add Season</button>
+        <button class="add-episode-button" mat-stroked-button [routerLink]="['/create/episode/'+showId+'/'+(i+1)]">Add episode</button>
+      </div>
     </div>
-    <div class="form-buttons">
-        <button class="button" style="color: white;" mat-button (click)="cancel()" *ngIf="showId">Cancel</button>
-        <button class="button" color="primary" mat-raised-button (click)="save()">Save</button>
-    </div>
+    <h4 class="page-subtitle" *ngIf="showId">Danger zone</h4>
+    <button class="delete-button" color="warn" mat-stroked-button (click)="deleteShow()" *ngIf="showId">Delete show</button>
 </div>

@@ -10,7 +10,7 @@
       </button>
     </div>
     <div class="footer">
-      <button mat-raised-button color="primary" (click)="upload()" *ngIf="uploadButton" [disabled]="!file">Upload new video</button>
+      <button mat-raised-button color="primary" (click)="upload()" *ngIf="uploadButton" [disabled]="!file" style="width: 200px;">Upload new video</button>
       <p *ngIf="file">{{ file.name }}</p>
     </div>
   </div>
