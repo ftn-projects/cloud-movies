@@ -15,6 +15,7 @@ from aws_cdk import (
     aws_lambda_event_sources as lambda_event_sources,
     aws_sns_subscriptions as subscriptions,
     aws_sns as sns,
+    aws_sqs as sqs,
     aws_cognito as cognito,
     aws_iam as iam,
     RemovalPolicy,
@@ -66,7 +67,8 @@ class CloudMoviesStack(Stack):
             self, VIDEOS_TABLE,
             partition_key=dynamodb.Attribute(name='videoId', type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name='videoType', type=dynamodb.AttributeType.STRING),
-            removal_policy=RemovalPolicy.DESTROY
+            removal_policy=RemovalPolicy.DESTROY,
+            stream=dynamodb.StreamViewType.NEW_AND_OLD_IMAGES
         )
         for index in VIDEOS_TABLE_GSI:
             self.videos_table.add_global_secondary_index(
@@ -78,14 +80,22 @@ class CloudMoviesStack(Stack):
             self, SUBSCRIPTIONS_TABLE,
             partition_key=dynamodb.Attribute(name='userId', type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name='subscriptionType',type=dynamodb.AttributeType.STRING),
-            removal_policy=RemovalPolicy.DESTROY
+            removal_policy=RemovalPolicy.DESTROY,
+            stream=dynamodb.StreamViewType.NEW_AND_OLD_IMAGES
         )
         
         self.ratings_table = dynamodb.Table(
             self, RATINGS_TABLE,
             partition_key=dynamodb.Attribute(name='userId', type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name='contentId', type=dynamodb.AttributeType.STRING),
-            removal_policy=RemovalPolicy.DESTROY 
+            removal_policy=RemovalPolicy.DESTROY,
+            stream=dynamodb.StreamViewType.NEW_AND_OLD_IMAGES
+        )
+
+        self.feeds_table = dynamodb.Table(
+            self, FEEDS_TABLE,
+            partition_key=dynamodb.Attribute(name='userId', type=dynamodb.AttributeType.STRING),
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
         # S3 Buckets
@@ -113,21 +123,28 @@ class CloudMoviesStack(Stack):
             removal_policy=RemovalPolicy.DESTROY
         )
         
+        # SQS Queues
+        self.feed_update_queue = sqs.Queue(self, 'feedUpdateQueue')
+
         # SNS Topics
         self.source_upload_processing_topic = sns.Topic(self, 'sourceUploadProcessingTopic')
         self.source_upload_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
 
+        self.video_published_topic = sns.Topic(self, 'videoPublishedTopic')
+        self.video_published_topic.add_subscription(subscriptions.SqsSubscription(self.feed_update_queue))
+
         # Utils layer
         self.utils_layer = create_python_lambda_layer(self, 'utils', 'layer/utils')
 
-        self.__create_source_upload_processing_workflow()
-        self.__create_source_upload_processing_cleanup()
+        self.__create_source_upload_processing()
+        self.__create_notify_subscribers()
+        self.__create_update_feed()
 
         self.__create_user_pool()
         self.__create_api_gateway()
 
 
-    def __create_source_upload_processing_workflow(self) -> None:
+    def __create_source_upload_processing(self) -> None:
         unzip_lambda = create_lambda(self, 'unzipVideoLambda', 'unzip_video', 'unzip_video.handler')
         unzip_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         unzip_lambda.add_environment('EXTENSIONS', ','.join(VIDEO_EXTENSIONS))
@@ -201,9 +218,7 @@ class CloudMoviesStack(Stack):
                 events=[s3.EventType.OBJECT_CREATED],
                 filters=[{'suffix': extension}]
             ))
-
-
-    def __create_source_upload_processing_cleanup(self) -> None:
+        
         cleanup_lambda = create_lambda(self, 'handle_processing_result')
         cleanup_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
@@ -216,28 +231,59 @@ class CloudMoviesStack(Stack):
         self.source_upload_processing_topic.add_subscription(subscriptions.LambdaSubscription(cleanup_lambda))
 
 
+    def __create_notify_subscribers(self) -> None:
+        notify_subscribers_lambda = create_lambda(
+            self, 'notify_subscribers',
+            env_vars=[('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)],
+            permissions=[self.subscriptions_table.grant_read_data])
+        self.video_published_topic.add_subscription(subscriptions.LambdaSubscription(notify_subscribers_lambda))
+
+
+    def __create_update_feed(self) -> None:
+        create_lambda(
+            self, 'update_feed',
+            env_vars=[
+                ('VIDEOS_TABLE', self.videos_table.table_name),
+                ('RATINGS_TABLE', self.ratings_table.table_name),
+                ('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name),
+                ('FEEDS_TABLE', self.feed_update_queue.queue_arn)],
+            permissions=[
+                self.videos_table.grant_read_data,
+                self.ratings_table.grant_read_data,
+                self.subscriptions_table.grant_read_data,
+                self.feeds_table.grant_write_read_data,
+                self.feed_update_queue.grant_consume_messages]
+        ).add_event_source_mapping(
+            "SQSEventSource",
+            event_source_arn=self.feed_update_queue.queue_arn,
+            batch_size=1,
+            enabled=True
+        )
+
+
+
     def __create_api_gateway(self) -> apigateway.RestApi:
-        upload_lambda = create_lambda(self, 'uploadVideoLambda', 'upload_video', 'upload_video.handler')
+        upload_lambda = create_lambda(self, 'upload_video')
         upload_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         self.source_bucket.grant_put(upload_lambda)
 
-        list_videos_lambda = create_lambda(self, 'listVideosLambda', 'list_videos', 'list_videos.handler', layers=[self.utils_layer])
+        list_videos_lambda = create_lambda(self, 'list_videos', layers=[self.utils_layer])
         list_videos_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.videos_table.grant_read_data(list_videos_lambda)
 
-        find_video_lambda = create_lambda(self, 'findVideoLambda', 'get_details', 'get_details.handler', layers=[self.utils_layer])
+        find_video_lambda = create_lambda(self, 'get_details', layers=[self.utils_layer])
         find_video_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.videos_table.grant_read_data(find_video_lambda)
 
-        query_videos_lambda = create_lambda(self, 'queryVideosLambda', 'query_videos', 'query_videos.handler')
+        query_videos_lambda = create_lambda(self, 'query_videos')
         query_videos_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.videos_table.grant_read_data(query_videos_lambda)
 
-        list_subscriptions_lambda = create_lambda(self, 'listSubscriptionsLambda', 'list_subscriptions', 'list_subscriptions.handler', layers=[self.utils_layer])
+        list_subscriptions_lambda = create_lambda(self, 'list_subscriptions', layers=[self.utils_layer])
         list_subscriptions_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
         self.subscriptions_table.grant_read_data(list_subscriptions_lambda)
 
-        stream_lambda = create_lambda(self, 'streamLambda', 'stream_video', 'stream_video.handler', layers=[self.utils_layer])
+        stream_lambda = create_lambda(self, 'stream_video', layers=[self.utils_layer])
         stream_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         stream_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
         self.publish_bucket.grant_read(stream_lambda)
@@ -248,21 +294,18 @@ class CloudMoviesStack(Stack):
             resources=[f"{self.publish_bucket.bucket_arn}/*"]
         ))
 
-        subscribe_lambda = create_lambda(self, 'subscribeLambda', 'subscribe', 'subscribe.handler', layers=[self.utils_layer])
+        subscribe_lambda = create_lambda(self, 'subscribe', layers=[self.utils_layer])
         subscribe_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
         self.subscriptions_table.grant_read_write_data(subscribe_lambda)
 
-        unsubscribe_lambda = create_lambda(self, 'unsubcribeLambda', 'unsubscribe', 'unsubscribe.handler', layers=[self.utils_layer])
+        unsubscribe_lambda = create_lambda(self, 'unsubscribe', layers=[self.utils_layer])
         unsubscribe_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
         self.subscriptions_table.grant_read_write_data(unsubscribe_lambda)
 
-        rate_content_lambda = create_lambda(self, 'rateContentLambda', 'rate_content', 'rate_content.handler', layers=[self.utils_layer])
+        rate_content_lambda = create_lambda(self, 'rate_content', layers=[self.utils_layer])
         rate_content_lambda.add_environment('RATINGS_TABLE', self.ratings_table.table_name)
         self.ratings_table.grant_read_write_data(rate_content_lambda)
 
-
-        # Create API Gateway
-        api = apigateway.RestApi(self, API_GATEWAY)
 
         authorizer_lambda = create_lambda_with_req(self, 'authorizerLambda', 'authorizer', 'authorizer.handler')
         authorizer_lambda.add_environment('REGION', self.region)
@@ -275,6 +318,20 @@ class CloudMoviesStack(Stack):
             identity_source='method.request.header.Authorization',
             results_cache_ttl=Duration.seconds(0)
         )
+
+        # Create API Gateway
+        api = apigateway.RestApi(
+            self, API_GATEWAY, 
+            default_method_options=apigateway.MethodOptions(
+                authorization_type=apigateway.AuthorizationType.CUSTOM,
+                authorizer=authorizer
+            ),
+            default_cors_preflight_options=apigateway.CorsOptions(
+                allow_methods=apigateway.Cors.ALL_METHODS,
+                allow_origins=apigateway.Cors.ALL_ORIGINS
+            )
+        )
+
         content_resource = api.root.add_resource('content')
         videos_resource = api.root.add_resource('video')
         movies_resource = api.root.add_resource('movie')
@@ -327,16 +384,12 @@ class CloudMoviesStack(Stack):
         video_id_resource.add_resource('{resolution}').add_method('GET', stream_integration)
 
         rating_integration = apigateway.LambdaIntegration(rate_content_lambda)
-        rating_user_id_resource = rating_resource.add_resource('{user_id}', 
-                                                                    default_cors_preflight_options=apigateway.CorsOptions(
-                                                                    allow_methods=apigateway.Cors.ALL_METHODS,
-                                                                    allow_origins=apigateway.Cors.ALL_ORIGINS
-                                                                    ))
+        rating_user_id_resource = rating_resource.add_resource('{user_id}')
         rating_user_id_resource.add_method('POST', rating_integration)
         
         # GET /show/{showId}/seasonDetails - seasons with episodes
         show_id_resource.add_resource('seasonDetails').add_method('GET', create_lambda_integration(
-            self, 'get_season_details', 
+            self, 'get_seasons_details', 
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_data]
         ))
@@ -363,7 +416,7 @@ class CloudMoviesStack(Stack):
         ))
 
         # PUT /content/{videoId} - update show/movie details
-        content_resource.add_resource('{videoId}').add_method('PUT', create_lambda_integration(
+        content_id_res.add_method('PUT', create_lambda_integration(
             self, 'edit_details',
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_write_data]
@@ -424,7 +477,7 @@ class CloudMoviesStack(Stack):
 
 
     def __create_user_pool(self) -> cognito.UserPool:
-        attach_role_lambda = create_lambda(self, 'attachUserRole', 'attach_role', 'user_role.handler')
+        attach_role_lambda = create_lambda(self, 'attach_role')
         
         pool = cognito.UserPool(
             self, USER_POOL,

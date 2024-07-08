@@ -13,7 +13,7 @@ CONGITO_CLIENT_ID = os.getenv('COGNITO_CLIENT_ID')
 
 ROLE_ACCESS_CONTROL = {
     'Admin': ['GET/admin', 'GET/user'],
-    'User': ['GET/user']
+    'User': ['GET/user', 'GET/upload']
 }
 
 def get_jwks():
