@@ -9,9 +9,8 @@ export class UploadVideoComponent {
   @Input('videoId') videoId?: string;
   @Input('season') season?: number;
   @Input('episode') episode?: number;
-  @Input('uploadButton') uploadButton: boolean = true; 
   
-  protected file?: File;
+  public file?: File;
 
   onFileSelected(event: any): void {
     const selectedFile = event.target.files[0];
@@ -44,10 +43,5 @@ export class UploadVideoComponent {
     if (files && files.length > 0) {
       this.file = files[0];
     }
-  }
-
-  upload(): void {
-    // Implement the file save logic here
-    console.log('File saved:', this.file);
   }
 }

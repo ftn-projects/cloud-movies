@@ -28,8 +28,29 @@
     padding-top: 30px;
 }
 
+.delete-button:not(:disabled) {
+    width: 200px;
+}
+
 .inline-section {
     display: flex;
     gap: 20px;
+    color: white;
+}
+
+.upload-file-button {
+    display: flex;
+    justify-content: left;
+    margin-top: 20px;
+    gap: 10px;
+}
+
+.upload-file-button button:disabled {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.upload-file-button p {
+    align-content: center;
+    margin: 0;
     color: white;
 }

@@ -3,10 +3,16 @@
     <h4 class="page-subtitle">Details</h4>
     <app-manage-basic-details></app-manage-basic-details>
     <div class="form-buttons" *ngIf="episode">
-        <button class="button" style="color: white;" mat-button (click)="cancel()">Cancel</button>
-        <button class="button" color="primary" mat-raised-button (click)="save()">Save details</button>
+        <button style="color: white;" mat-button (click)="cancelDetails()">Cancel</button>
+        <button color="primary" mat-raised-button (click)="updateDetails()">Update details</button>
     </div>
     <h4 class="page-subtitle">Video</h4>
-    <app-upload-video [videoId]="showId" [season]="season" [episode]="episode" [uploadButton]="episode != null"></app-upload-video>
-    <button class="button" color="primary" mat-raised-button (click)="create()" *ngIf="!episode" style="margin-top: 30px;">Create episode</button>
+    <app-upload-video [videoId]="showId" [season]="season" [episode]="episode"></app-upload-video>
+    <div class="upload-file-button">
+      <button mat-raised-button color="primary" (click)="updateVideo()" [disabled]="!getFile()" style="width: 200px;" *ngIf="episode">Upload new video</button>
+      <p *ngIf="getFile()">{{ getFile()!.name }}</p>
+    </div>
+    <button color="primary" mat-raised-button (click)="createEpisode()" *ngIf="!episode" style="margin-top: 30px;">Create episode</button>
+    <h4 class="page-subtitle" *ngIf="episode">Danger zone</h4>
+    <button class="delete-button" color="warn" mat-stroked-button (click)="deleteEpisode()" *ngIf="episode">Delete episode</button>
 </div>

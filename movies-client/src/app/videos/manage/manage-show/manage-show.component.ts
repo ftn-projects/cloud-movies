@@ -7,6 +7,7 @@ import { ManageBasicDetailsComponent } from '../manage-basic-details/manage-basi
 import { ManageExtendedDetailsComponent } from '../manage-extended-details/manage-extended-details.component';
 import { ShowService } from '../../show.service';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+import { SharedService } from '../../../shared/shared.service';
 
 @Component({
   selector: 'app-manage-show',
@@ -17,22 +18,22 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 export class ManageShowComponent {
   protected showId?: string;
   protected createSeason: FormGroup = new FormGroup({
-    seasonName: new FormControl('', [Validators.required]),
+    seasonTitle: new FormControl('', [Validators.required]),
     releaseDate: new FormControl('', [Validators.required])
   });
-  get titleInput() { return this.createSeason.get('seasonName')?.value; }
+  get titleInput() { return this.createSeason.get('seasonTitle')?.value; }
   get releaseDateInput() { return this.createSeason.get('releaseDate')?.value; }
 
-  protected seasonDetails: any[] = [];
+  protected seasons: any[] = [];
 
   @ViewChild(ManageBasicDetailsComponent) basicDetailsComponent!: ManageBasicDetailsComponent;
   @ViewChild(ManageExtendedDetailsComponent) extendedDetailsComponent!: ManageExtendedDetailsComponent;
 
   constructor(
     private activatedroute: ActivatedRoute,
-    private formBuilder: FormBuilder,
     private contentService: ContentService,
     private showService: ShowService,
+    private sharedService: SharedService,
     private router: Router
   ) {
   }
@@ -45,8 +46,23 @@ export class ManageShowComponent {
     });
   }
 
+  collectDetails(): any {
+    const basicDetails = this.basicDetailsComponent.detailsGroup.value;
+    const extendedDetails = this.extendedDetailsComponent.detailsGroup.value;
+
+    return {
+      ...basicDetails,
+      'genres': extendedDetails.genres.split(',').map((genre: string) => genre.trim()),
+      'actors': extendedDetails.actors.split(',').map((actor: string) => actor.trim()),
+      'directors': extendedDetails.directors.split(',').map((director: string) => director.trim())
+    };
+  }
+
   createShow() {
-    throw new Error('Method not implemented.');
+    this.showService.createShow(this.collectDetails()).subscribe(showId => {
+      this.sharedService.displaySnack('Show created');
+      this.router.navigate([`/edit/show/${showId}`]);
+    });
   }
 
   cancelDetails() {
@@ -54,17 +70,11 @@ export class ManageShowComponent {
   }
 
   updateDetails() {
-    const basicDetails = this.basicDetailsComponent.detailsGroup.value;
-    const extendedDetails = this.extendedDetailsComponent.detailsGroup.value;
-
-    const show = {
-      ...basicDetails,
-      ...extendedDetails,
-    };
-
-    // this.contentService.saveContentMetadata(show).subscribe(() => {
-    //   console.log('Show saved');
-    // });
+    this.contentService.saveDetails(this.showId!, this.collectDetails()).subscribe((updated) => {
+      this.sharedService.displaySnack('Show details updated');
+      this.basicDetailsComponent.loadData(updated.title, updated.description, updated.releaseDate);
+      this.extendedDetailsComponent.loadData(updated.genres, updated.actors, updated.directors);
+    });
   }
 
   loadDetails() {
@@ -79,49 +89,70 @@ export class ManageShowComponent {
   loadSeasons() {
     if (!this.showId) return;
 
-    this.showService.getSeasonsWithEpisodes(this.showId).subscribe((seasons: any[]) => {
-      this.seasonDetails = seasons;
-    });
+    this.showService.getSeasonsWithEpisodes(this.showId).subscribe(seasons => this.seasons = seasons);
   }
 
   addSeason() {
-    const seasonName = this.titleInput;
+    if (this.createSeason.invalid) return;
+    
+    const title = this.titleInput;
     const releaseDate = this.releaseDateInput;
-    if (seasonName && releaseDate) {
-      this.seasonDetails.push({ seasonName, releaseDate, episodes: [] });
+
+    this.showService.addSeason(this.showId!, title, releaseDate).subscribe(() => {
+      this.sharedService.displaySnack('Season created');
+      this.seasons.push({ title, releaseDate, episodes: [] });
       this.createSeason.reset();
-    }
+    });
   }
 
-  deleteSeason(index: number) {
-    this.seasonDetails.splice(index, 1);
+  deleteSeason(season: number) {
+    this.showService.deleteSeason(this.showId!, season).subscribe(() => {
+      this.sharedService.displaySnack('Season deleted');
+      this.seasons.splice(season, 1);
+    });
   }
 
   getEpisodesForSeason(index: number) {
-    return this.seasonDetails[index].episodes;
+    return this.seasons[index].episodes;
   }
 
-  addEpisode(seasonIndex: number) {
-    this.router.navigate([`/create/episode/${this.showId}/${seasonIndex}`]);
+  addEpisode(season: number) {
+    this.router.navigate([`/create/episode/${this.showId}/${season}`]);
   }
 
-  editEpisode(episodeIndex: number, seasonIndex: number) {
-    this.router.navigate([`/edit/episode/${this.showId}/${seasonIndex}/${episodeIndex}`]);
+  editEpisode(episode: number, season: number) {
+    this.router.navigate([`/edit/episode/${this.showId}/${season}/${episode}`]);
   }
 
-  deleteEpisode(episodeIndex: number, seasonIndex: number) {
-    this.seasonDetails[seasonIndex].episodes.splice(episodeIndex, 1);
+  deleteEpisode(episode: number, season: number) {
+    this.showService.deleteEpisode(this.showId!, season, episode).subscribe(() => {
+      this.sharedService.displaySnack('Episode deleted');
+      this.seasons[season].episodes.splice(episode, 1);
+    });
   }
 
   deleteShow() {
-    // call api to delete
+    this.showService.deleteShow(this.showId!).subscribe(() => {
+      this.sharedService.displaySnack('Show deleted');
+      this.router.navigate(['/']);
+    });
   }
 
   dropSeason(event: CdkDragDrop<string[]>) {
-    moveItemInArray(this.seasonDetails, event.previousIndex, event.currentIndex);
+    const [first, second] = [event.previousIndex, event.currentIndex];
 
-    // Update the season numbers in the service
-    // this.showService.swapSeason(this.showId!, this.originalSeasonOrder, this.seasonDetails).subscribe(() => {
-    // });
+    this.showService.swapSeasons(this.showId!, first, second).subscribe(() => {
+      console.log('Season order updated');
+      moveItemInArray(this.seasons, first, second);
+    });
+  }
+
+  dropEpisode(event: CdkDragDrop<string[]>, season: number) {
+    const [first, second] = [event.previousIndex, event.currentIndex];
+
+    this.showService.swapEpisodes(this.showId!, season, first, second).subscribe(() => {
+      console.log('Episode order updated');
+      moveItemInArray(this.seasons[season].episodes, event.previousIndex, event.currentIndex);
+    });
   }
 }

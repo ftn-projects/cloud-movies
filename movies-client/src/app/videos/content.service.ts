@@ -9,7 +9,6 @@ import {ContentDetails} from "./models/content-details";
   providedIn: 'root'
 })
 export class ContentService {
-
   constructor(private http: HttpClient) { }
 
   getFeed(userId: string) {
@@ -22,5 +21,9 @@ export class ContentService {
 
   getContentMetadata(contentId: string): Observable<ContentDetails> {
     return this.http.get<ContentDetails>(environments.api + `/content/${contentId}`);
+  }
+
+  saveDetails(contentId: string, details: any): Observable<any> {
+    return this.http.put(environments.api + `/content/${contentId}`, details);
   }
 }
