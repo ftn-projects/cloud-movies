@@ -1,6 +1,7 @@
 from os import path
 from aws_cdk import (
     aws_lambda as _lambda,
+    aws_apigateway as apigateway,
     Duration
 )
 from aws_cdk.aws_lambda_python_alpha import PythonLayerVersion
@@ -10,9 +11,19 @@ RUNTIME = _lambda.Runtime.PYTHON_3_9
 TIMEOUT_DURATION = Duration.seconds(10)
 
 
-def create_lambda(scope, id, include_dir, handler, timeout=10, memory=128, layers=[]):
+def create_lambda_integration(scope, name, include_dir=None, handler=None, timeout=10, memory=128, layers=[], env_vars=[], permissions=[]):
+    function = create_lambda(scope, name, include_dir, handler, timeout, memory, layers, env_vars, permissions)
+    return apigateway.LambdaIntegration(function)
+
+
+def create_lambda(scope, name, include_dir=None, handler=None, timeout=10, memory=128, layers=[], env_vars=[], permissions=[]):
+    if include_dir is None:
+        include_dir = name
+    if handler is None:
+        handler = name + '.handler'
+
     function = _lambda.Function(
-        scope, id,
+        scope, __camel_case(name.split('_')) + 'Lambda',
         code=_lambda.Code.from_asset(path.join(LAMBDAS_HOME, include_dir)),
         handler=handler,
         runtime=RUNTIME,
@@ -27,8 +38,18 @@ def create_lambda(scope, id, include_dir, handler, timeout=10, memory=128, layer
             allowed_origins=['*']
         )
     )
+
+    for var in env_vars:
+        function.add_environment(*var)
+
+    for permission in permissions:
+        permission(function)
     
     return function
+
+
+def __camel_case(words: list[str]) -> str:
+    return words[0].lower() + ''.join(word.capitalize() for word in words[1:])
 
 
 def create_lambda_with_code(scope, id, code, layers=[]):
@@ -48,6 +69,7 @@ def create_lambda_layer(scope, id, code):
         code=_lambda.Code.from_asset(code),
         compatible_runtimes=[RUNTIME],
     )
+
 
 def create_python_lambda_layer(scope, id, entry):
     return PythonLayerVersion(

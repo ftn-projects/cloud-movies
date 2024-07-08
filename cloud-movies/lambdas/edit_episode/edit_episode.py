@@ -2,27 +2,26 @@ import datetime
 import json
 import os
 import boto3
-import utils
-from botocore.config import Config
+
 
 def handler(event, context):
     dynamodb = boto3.resource('dynamodb')
-    s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
 
     table_name = os.getenv('VIDEOS_TABLE')
     table = dynamodb.Table(table_name)
     
-    video_id = json.loads(event['pathParameters']['videoId'])
-    video_type = json.loads(event['pathParameters']['videoType'])
+    show_id = json.loads(event['pathParameters']['showId'])
+    season = json.loads(event['pathParameters']['season'])
+    episode = json.loads(event['pathParameters']['episode'])
     value = event['body']
 
-    key = {'videoId': video_id, 'videoType': video_type}
+    key = {'videoId': show_id, 'videoType': f'SHOW::S{season:02d}::E{episode:02d}'}
     response = table.get_item(Key=key)
 
     if 'Item' in response:
         item = response['Item']
 
-        for param in ['title', 'description', 'releaseDate', 'genres', 'actors', 'directors']:
+        for param in ['title', 'description', 'releaseDate']:
             item[param] = value[param]
 
         item['modified_at'] = datetime.now().isoformat()
@@ -34,4 +33,10 @@ def handler(event, context):
         status_code = 404
         body = {'error': 'Item not found'}
 
-    return utils.create_response(status_code, body)
+    return { 
+        'statusCode': status_code, 
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+        },
+        'body': json.dumps(body, default=str)
+    }

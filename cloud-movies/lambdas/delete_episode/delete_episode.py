@@ -1,8 +1,8 @@
 import json
 import os
 import boto3
-import utils
 from botocore.config import Config
+
 
 def handler(event, context):
     dynamodb = boto3.resource('dynamodb')
@@ -22,7 +22,13 @@ def handler(event, context):
     if 'Item' not in table_response:
         status_code = 404
         body = {'error': 'Item not found'}
-        return utils.create_response(status_code, body)
+        return { 
+            'statusCode': status_code, 
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+            },
+            'body': json.dumps(body, default=str)
+        }
 
     table.delete_item(Key=key)
 
@@ -30,4 +36,10 @@ def handler(event, context):
         video_file = table_response['Item']['files'][resolution]['path']
         s3.Object(bucket_name, video_file).delete()
 
-    return utils.create_response(204,'')
+    return { 
+        'statusCode': 204, 
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+        },
+        'body': json.dumps({}, default=str)
+    }
