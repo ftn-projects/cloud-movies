@@ -281,9 +281,13 @@ class CloudMoviesStack(Stack):
             self, 'publish_update_feed',
             env_vars=[
                 ('VIDEOS_TABLE', self.videos_table.table_name),
+                ('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name),
+                ('RATINGS_TABLE', self.ratings_table.table_name),
                 ('FEEDS_TABLE', self.feeds_table.table_name)],
             permissions=[
                 self.videos_table.grant_read_data,
+                self.subscriptions_table.grant_read_data,
+                self.ratings_table.grant_read_data,
                 self.feeds_table.grant_read_write_data,
                 self.publish_event_feed_queue.grant_consume_messages]
         ).add_event_source_mapping(

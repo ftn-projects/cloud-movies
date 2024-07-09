@@ -15,10 +15,12 @@ export class UploadService {
 
   uploadFile(upload: any, file: Blob): Observable<void> {
     const formData = new FormData();
-    Object.keys(upload.params).forEach(key => {
-      formData.append(key, upload.params[key]);
+    Object.keys(upload.fields).forEach(key => {
+      formData.append(key, upload.fields[key]);
     });
     formData.append('file', file);
+
+    console.log(upload.url, formData)
     return this.http.post<void>(upload.url, formData);
   }
 }

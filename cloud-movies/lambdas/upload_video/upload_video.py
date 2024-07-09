@@ -27,5 +27,8 @@ def handler(event, context):
 
     return {
         'statusCode': 200,
-        'body': json.dumps({'uploadUrl': upload_url})
+        'body': json.dumps({'uploadUrl': upload_url}),
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+        }
     }
