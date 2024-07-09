@@ -1,3 +1,4 @@
+<div class="page-wrapper">
 <div class="form-wrapper">
     <h2 class="page-title"><span *ngIf="!episode">Create</span><span *ngIf="episode">Edit</span> episode</h2>
     <h4 class="page-subtitle">Details</h4>
@@ -15,4 +16,5 @@
     <button color="primary" mat-raised-button (click)="createEpisode()" *ngIf="!episode" style="margin-top: 30px;">Create episode</button>
     <h4 class="page-subtitle" *ngIf="episode">Danger zone</h4>
     <button class="delete-button" color="warn" mat-stroked-button (click)="deleteEpisode()" *ngIf="episode">Delete episode</button>
+</div>
 </div>

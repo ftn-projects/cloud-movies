@@ -10,7 +10,7 @@ export class UploadService {
   constructor(private http: HttpClient) { }
 
   getUploadUrl(): Observable<any> {
-    return this.http.get<any>(environments.api + '/uploadurl');
+    return this.http.get<any>(environments.api + '/upload');
   }
 
   uploadFile(upload: any, file: Blob): Observable<void> {
