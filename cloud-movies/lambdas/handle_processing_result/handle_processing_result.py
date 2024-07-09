@@ -5,6 +5,7 @@ import os
 
 s3_client = boto3.resource('s3')
 dynamodb = boto3.resource('dynamodb')
+sns = boto3.client('sns')
 
 
 def handler(event, context):
@@ -12,6 +13,7 @@ def handler(event, context):
     source_bucket = os.environ['SOURCE_BUCKET']
     videos_table = os.environ['VIDEOS_TABLE']
     resolutions = os.environ['RESOLUTIONS'].split(',')
+    published_video_arn = os.environ['PUBLISHED_VIDEO_ARN']
 
     info = json.loads(event['Records'][0]['Sns']['Message'])
     if info['state'] == 'unzipping': return
@@ -37,6 +39,16 @@ def handler(event, context):
                 res: {'path': f'{publish_key}_{res}.mp4', 'size': obj.content_length} for res, obj in objects.items()
             }}
         )
+        response = table.get_item(
+            Key={'videoId': primary_key, 'videoType': sort_key}
+        )
+
+        sns.publish(
+            TopicArn=published_video_arn,
+            Subject='Video published',
+            Message=json.dumps(response['Item'])
+        )
+
     else:
         table = dynamodb.Table(videos_table)
         table.delete_item(Key={'videoId': primary_key, 'videoType': sort_key})
