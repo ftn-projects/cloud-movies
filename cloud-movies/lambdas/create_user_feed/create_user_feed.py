@@ -1,6 +1,6 @@
 import boto3
 import os
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr
 import json
 
 
@@ -20,11 +20,19 @@ def handler(event, context):
     message_json = json.loads(json.loads(message_str)['default'])
     user_id = message_json['request']['userAttributes']['sub']
 
+    contentIds = []
     for video_type in video_types:
-        response = videos_table.query(KeyConditionExpression=Key('videoType').eq(video_type))
-        for item in response['Items']:
-            feeds_table.put_item(Item={
-                'userId': user_id,
-                'contentId': item['videoId'],
-                'rating': 50 
-            })
+        response = videos_table.scan(FilterExpression=Attr('videoType').eq(video_type))
+        contentIds.extend([item['videoId'] for item in response['Items']])
+    
+    feeds_table.put_item(Item={
+        'userId': user_id,
+        'feed': [
+            {
+                'contentId': contentId,
+                'rating': 50
+            } for contentId in contentIds
+        ]
+    })
+    
+    return message_json
