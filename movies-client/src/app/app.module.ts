@@ -1,5 +1,5 @@
 import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
+import {BrowserModule, provideClientHydration, withNoHttpTransferCache} from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -10,6 +10,7 @@ import {VideosModule} from "./videos/videos.module";
 import { HttpClientModule, HTTP_INTERCEPTORS } from "@angular/common/http";
 import {SubscriptionModule} from "./subscription/subscription.module";
 import { ManageModule } from './videos/manage/manage.module';
+import {CustomInterceptor} from "./auth/interceptor/custom.interceptor";
 
 @NgModule({
   declarations: [
@@ -27,6 +28,8 @@ import { ManageModule } from './videos/manage/manage.module';
   ],
   providers: [
     provideAnimationsAsync(),
+    provideClientHydration(withNoHttpTransferCache()),
+    { provide: HTTP_INTERCEPTORS, useClass: CustomInterceptor, multi: true }
   ],
   bootstrap: [AppComponent]
 })

@@ -2,7 +2,9 @@ import {HttpEvent, HttpHandler, HttpInterceptor, HttpInterceptorFn, HttpRequest}
 import {Router} from "@angular/router";
 import {AuthenticationService} from "../authentication.service";
 import {mergeMap, Observable} from "rxjs";
+import {Injectable} from "@angular/core";
 
+@Injectable()
 export class CustomInterceptor implements HttpInterceptor {
 
   constructor(private router: Router,
