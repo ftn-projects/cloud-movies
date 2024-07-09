@@ -466,9 +466,9 @@ class CloudMoviesStack(Stack):
                                                    authorization_type=apigateway.AuthorizationType.CUSTOM,
                                                    authorizer=authorizer)
 
-        # GET /content/query
+        # GET /content/query/{query}
         query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)
-        videos_resource.add_resource('query').add_method('GET', query_videos_integration, 
+        videos_resource.add_resource('query').add_resource('{query}').add_method('GET', query_videos_integration, 
                                                    authorization_type=apigateway.AuthorizationType.CUSTOM,
                                                    authorizer=authorizer)
 
@@ -605,6 +605,15 @@ class CloudMoviesStack(Stack):
             permissions=[
                 self.videos_table.grant_read_write_data,
                 self.publish_bucket.grant_delete]
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
+        
+        # GET /content/feed/{userId}
+        content_resource.add_resource('feed').add_resource('{userId}').add_method('GET', create_lambda_integration(
+            self, 'get_feed',
+            env_vars=[('FEEDS_TABLE', self.feeds_table.table_name)],
+            permissions=[self.feeds_table.grant_read_data]
         ), 
             authorization_type=apigateway.AuthorizationType.CUSTOM,
             authorizer=authorizer)
