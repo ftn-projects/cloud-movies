@@ -458,74 +458,100 @@ class CloudMoviesStack(Stack):
         # GET /content/{videoId} - anyone
         find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
         content_id_res = content_resource.add_resource('{videoId}')
-        content_id_res.add_method('GET', find_video_integration)
+        content_id_res.add_method('GET', find_video_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         # GET /content/query
         query_videos_integration = apigateway.LambdaIntegration(query_videos_lambda)
-        videos_resource.add_resource('query').add_method('GET', query_videos_integration)
+        videos_resource.add_resource('query').add_method('GET', query_videos_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         # GET /subscription/{userId (orEmail)}
         list_subscriptions_integration = apigateway.LambdaIntegration(list_subscriptions_lambda)
-        sub_user_id_resource.add_method('GET', list_subscriptions_integration)
+        sub_user_id_resource.add_method('GET', list_subscriptions_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         # POST /subscription/{userId}
         subscribe_integration = apigateway.LambdaIntegration(subscribe_lambda)
-        sub_user_id_resource.add_method('POST', subscribe_integration)
+        sub_user_id_resource.add_method('POST', subscribe_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         # DELETE /subscription/{userId}
         unsubscribe_integration = apigateway.LambdaIntegration(unsubscribe_lambda)
-        sub_user_id_resource.add_resource('{type}').add_resource('{name}').add_method('DELETE', unsubscribe_integration)
+        sub_user_id_resource.add_resource('{type}').add_resource('{name}').add_method('DELETE', unsubscribe_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         # GET /video/{videoId}/{resolution}?season=1&episode=2 - stream/download video
         stream_integration = apigateway.LambdaIntegration(stream_lambda)
         video_id_resource = videos_resource.add_resource('{videoId}')
-        video_id_resource.add_resource('{resolution}').add_method('GET', stream_integration)
+        video_id_resource.add_resource('{resolution}').add_method('GET', stream_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         rating_integration = apigateway.LambdaIntegration(rate_content_lambda)
         rating_user_id_resource = rating_resource.add_resource('{user_id}')
-        rating_user_id_resource.add_method('POST', rating_integration)
+        rating_user_id_resource.add_method('POST', rating_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
         
         # GET /show/{showId}/seasonDetails - seasons with episodes
         show_id_resource.add_resource('seasonDetails').add_method('GET', create_lambda_integration(
             self, 'get_seasons_details', 
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_data]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # GET /show/{showId}/{season}/{episode} - episode details
         episode_id_resource.add_method('GET', create_lambda_integration(
             self, 'get_episode_details',
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_data]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # POST /show - create show
         show_resource.add_method('POST', create_lambda_integration(
             self, 'create_show',
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_write_data]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # POST /show/{showId} - create season
         show_id_resource.add_method('POST', create_lambda_integration(
             self, 'create_season',
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_write_data]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # PUT /content/{videoId} - update show/movie details
         content_id_res.add_method('PUT', create_lambda_integration(
             self, 'edit_details',
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_write_data]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
     
         # PUT /show/{showId}/{season}/{episode} - update episode
         season_id_resource.add_method('PUT', create_lambda_integration(
             self, 'edit_episode',
             env_vars=[('VIDEOS_TABLE', self.videos_table.table_name)],
             permissions=[self.videos_table.grant_read_write_data]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # DELETE /show/{showId}
         show_id_resource.add_method('DELETE', create_lambda_integration(
@@ -536,7 +562,9 @@ class CloudMoviesStack(Stack):
             permissions=[
                 self.videos_table.grant_read_write_data, 
                 self.publish_bucket.grant_delete]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # DELETE /show/{showId}/{season}
         season_id_resource.add_method('DELETE', create_lambda_integration(
@@ -547,7 +575,9 @@ class CloudMoviesStack(Stack):
             permissions=[
                 self.videos_table.grant_read_write_data,
                 self.publish_bucket.grant_delete]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # DELETE /show/{showId}/{season}/{episode}
         episode_id_resource.add_method('DELETE', create_lambda_integration(
@@ -558,7 +588,9 @@ class CloudMoviesStack(Stack):
             permissions=[
                 self.videos_table.grant_read_write_data,
                 self.publish_bucket.grant_delete]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         # DELETE /movie/{movieId}
         movies_resource.add_resource('{movieId}').add_method('DELETE', create_lambda_integration(
@@ -569,7 +601,9 @@ class CloudMoviesStack(Stack):
             permissions=[
                 self.videos_table.grant_read_write_data,
                 self.publish_bucket.grant_delete]
-        ))
+        ), 
+            authorization_type=apigateway.AuthorizationType.CUSTOM,
+            authorizer=authorizer)
 
         self.api = api
 
