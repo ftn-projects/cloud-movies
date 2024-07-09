@@ -1,4 +1,5 @@
-<div class="form-wrapper">
+<div class="page-wrapper">
+  <div class="form-wrapper">
     <h2 class="page-title"><span *ngIf="!showId">Create</span><span *ngIf="showId">Edit</span> show</h2>
     <h4 class="page-subtitle">Details</h4>
     <app-manage-basic-details></app-manage-basic-details>
@@ -53,5 +54,5 @@
     </div>
     <h4 class="page-subtitle" *ngIf="showId">Danger zone</h4>
     <button class="delete-button" color="warn" mat-stroked-button (click)="deleteShow()" *ngIf="showId">Delete show</button>
-  </div>
-  
+  </div>  
+</div>

@@ -1,8 +1,12 @@
+.page-wrapper {
+    padding-top: 100px;
+    padding-bottom: 50px;
+    padding-inline: 200px;
+}
+
 .form-wrapper {
     display: flex;
     flex-direction: column;
-    margin: 50px;
-    margin-inline: 200px;
     padding: 40px;
     border: 2px solid white;
     border-radius: 30px;
