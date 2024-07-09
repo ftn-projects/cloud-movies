@@ -12,16 +12,14 @@ USER_POOL_ID = os.getenv('USER_POOL_ID')
 CONGITO_CLIENT_ID = os.getenv('COGNITO_CLIENT_ID')
 
 ROLE_ACCESS_CONTROL = {
-    'Admin': ['GET/upload', 'GET/content', 'GET/content/{videoId}', 'GET/content/query',
-              'GET/video/{videoId}', 'GET/show/{showId}/seasonDetails', 'GET/show/{showId}/{season}/{episode}', 
-              'POST/show', 'POST/show/{showId}', 'PUT/content/{videoId}', 'PUT/content/{videoId}',
-              'PUT/show/{showId}/{season}/{episode}', 'DELETE/show/{showId}', 'DELETE/show/{showId}/{season}',
-              'DELETE/show/{showId}/{season}/{episode}', 'DELETE/movie/{movieId}'],
+    'Admin': ['GET/upload', 'GET/content', 'GET/content/', 'GET/content/query',
+              'GET/video/', 'GET/show/', 'POST/show', 'PUT/content/', 'DELETE/show/', 'DELETE/show/',
+              'DELETE/show/', 'DELETE/movie/'],
 
-    'User': ['GET/content/{videoId}', 'GET/content/query', 'GET/subscription/{userId}',
-             'POST/subscription/{userId}', 'DELETE/subscription/{userId}/{type}/{name}',
-             'GET/video/{videoId}', 'POST/ratings/{user_id}', 'GET/show/{showId}/seasonDetails',
-             'GET/show/{showId}/{season}/{episode}', ]
+    'User': ['GET/content/', 'GET/content/query', 'GET/subscription/',
+             'POST/subscription/', 'DELETE/subscription/',
+             'GET/video/', 'POST/ratings/', 'GET/show/',
+            ]
 }
 
 def get_jwks():
@@ -71,7 +69,8 @@ def generate_policy(principal_id, effect, method_arn):
     }
 
 def check_authorization(roles, method_arn):
-    method, path = method_arn.split('/')[2:4]
+    method, path = method_arn.split('/',3)[2:4]
+
     print(method, path)
     for role in roles:
         if role in ROLE_ACCESS_CONTROL:
