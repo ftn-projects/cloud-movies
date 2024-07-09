@@ -12,8 +12,16 @@ USER_POOL_ID = os.getenv('USER_POOL_ID')
 CONGITO_CLIENT_ID = os.getenv('COGNITO_CLIENT_ID')
 
 ROLE_ACCESS_CONTROL = {
-    'Admin': ['GET/admin', 'GET/user'],
-    'User': ['GET/user', 'GET/upload']
+    'Admin': ['GET/upload', 'GET/content', 'GET/content/{videoId}', 'GET/content/query',
+              'GET/video/{videoId}', 'GET/show/{showId}/seasonDetails', 'GET/show/{showId}/{season}/{episode}', 
+              'POST/show', 'POST/show/{showId}', 'PUT/content/{videoId}', 'PUT/content/{videoId}',
+              'PUT/show/{showId}/{season}/{episode}', 'DELETE/show/{showId}', 'DELETE/show/{showId}/{season}',
+              'DELETE/show/{showId}/{season}/{episode}', 'DELETE/movie/{movieId}'],
+
+    'User': ['GET/content/{videoId}', 'GET/content/query', 'GET/subscription/{userId}',
+             'POST/subscription/{userId}', 'DELETE/subscription/{userId}/{type}/{name}',
+             'GET/video/{videoId}', 'POST/ratings/{user_id}', 'GET/show/{showId}/seasonDetails',
+             'GET/show/{showId}/{season}/{episode}', ]
 }
 
 def get_jwks():
@@ -66,7 +74,6 @@ def check_authorization(roles, method_arn):
     print(method, path)
     for role in roles:
         if role in ROLE_ACCESS_CONTROL:
-            print('aaaa')
             for access_pattern in ROLE_ACCESS_CONTROL[role]:
                 access_method, access_path = access_pattern.split('/', 1)
                 print(access_method, access_path)
@@ -79,13 +86,12 @@ def handler(event, context):
     print(event)
     token = event['authorizationToken'].split(' ')[1]
     method_arn = event['methodArn']
+    print(method_arn)
     jwks = get_jwks()
     try:
-        print('123123', jwks)
         decode_token = decode_jwt(token, jwks)
         roles = decode_token.get('cognito:groups', [])
         user_id = decode_token['sub']
-        print(roles, user_id)
 
         if check_authorization(roles=roles, method_arn=method_arn):
             return generate_policy(user_id, 'Allow', method_arn)

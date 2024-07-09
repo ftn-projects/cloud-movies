@@ -8,20 +8,21 @@ import {SubscriptionComponent} from "./subscription/subscription/subscription.co
 import { ManageMovieComponent } from './videos/manage/manage-movie/manage-movie.component';
 import { ManageEpisodeComponent } from './videos/manage/manage-episode/manage-episode.component';
 import { ManageShowComponent } from './videos/manage/manage-show/manage-show.component';
+import {authGuard} from "./auth/guard/auth.guard";
 
 const routes: Routes = [
-  { path: '', component: HomeComponent },
+  { path: '', component: HomeComponent, canActivate: [authGuard] },
   { path: 'register', component: RegisterComponent },
   { path: 'login', component: LoginComponent },
-  { path: 'video/:videoId', component: VideoDetailsComponent },
-  { path: "subscriptions", component: SubscriptionComponent },
+  { path: 'video/:videoId', component: VideoDetailsComponent, canActivate: [authGuard] },
+  { path: "subscriptions", component: SubscriptionComponent, canActivate: [authGuard] },
   /* Videos management */
-  { path: 'create/movie', component: ManageMovieComponent },
-  { path: 'edit/movie/:movieId', component: ManageMovieComponent },
-  { path: 'create/show', component: ManageShowComponent },
-  { path: 'edit/show/:showId', component: ManageShowComponent },
-  { path: 'create/episode/:showId/:season', component: ManageEpisodeComponent },
-  { path: 'edit/episode/:showId/:season/:episode', component: ManageEpisodeComponent }
+  { path: 'create/movie', component: ManageMovieComponent, canActivate: [authGuard] },
+  { path: 'edit/movie/:movieId', component: ManageMovieComponent, canActivate: [authGuard] },
+  { path: 'create/show', component: ManageShowComponent, canActivate: [authGuard] },
+  { path: 'edit/show/:showId', component: ManageShowComponent, canActivate: [authGuard] },
+  { path: 'create/episode/:showId/:season', component: ManageEpisodeComponent, canActivate: [authGuard] },
+  { path: 'edit/episode/:showId/:season/:episode', component: ManageEpisodeComponent, canActivate: [authGuard] }
 ];
 
 @NgModule({
