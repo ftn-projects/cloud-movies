@@ -31,18 +31,19 @@ def generate_message(sub_type: str, name: str, title: str) -> str:
     return message     
 
 def handler(event, context):
-    videoType = event['videoType']
+    info = json.loads(event['Records'][0]['Sns']['Message'])
+    videoType = info['videoType']
 
     topics = {
-        'ACTOR': event['actors'].split(','),
-        'DIRECTOR': event['directors'].split(','),
-        'GENRE': event['genres'].split(','),
+        'ACTOR': info['actors'].split(','),
+        'DIRECTOR': info['directors'].split(','),
+        'GENRE': info['genres'].split(','),
     }
     
     if str(videoType).startswith('SHOW'):
-        topics['SHOW'] = [event['title']]
+        topics['SHOW'] = [info['title']]
     
-    send_emails(topics)
+    send_emails(topics, info['title'])
 
     return {
         'statusCode': 200,
