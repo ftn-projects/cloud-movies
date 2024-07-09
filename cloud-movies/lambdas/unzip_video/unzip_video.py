@@ -84,9 +84,9 @@ def process_metadata(text: bytes) -> dict:
         metadata.update({
             'videoId': str(uuid.uuid4()),
             'videoType': 'MOVIE',
-            'genres': loaded_json['genres'],
-            'actors': loaded_json['actors'],
-            'directors': loaded_json['directors']
+            'genres': [g.strip() for g in loaded_json['genres']],
+            'actors': [a.strip() for a in loaded_json['actors']],
+            'directors': [d.strip() for d in loaded_json['directors']]
         })
     else:
         season, episode = int(loaded_json['season']), int(loaded_json['episode'])

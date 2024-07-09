@@ -16,6 +16,7 @@ from aws_cdk import (
     aws_sns_subscriptions as subscriptions,
     aws_sns as sns,
     aws_sqs as sqs,
+    aws_pipes as pipes,
     aws_cognito as cognito,
     aws_iam as iam,
     RemovalPolicy,
@@ -23,6 +24,7 @@ from aws_cdk import (
     Duration,
     Stack,
 )
+import json
 
 
 # Constants
@@ -124,24 +126,27 @@ class CloudMoviesStack(Stack):
         )
         
         # SQS Queues
-        self.feed_update_queue = sqs.Queue(self, 'feedUpdateQueue')
+        self.user_event_feed_queue = sqs.Queue(self, 'userEventFeedQueue')
+        self.publish_event_feed_queue = sqs.Queue(self, 'publishEventFeedQueue')
 
         # SNS Topics
         self.source_upload_processing_topic = sns.Topic(self, 'sourceUploadProcessingTopic')
         self.source_upload_processing_topic.add_subscription(subscriptions.EmailSubscription(ADMIN_EMAIL))
 
         self.video_published_topic = sns.Topic(self, 'videoPublishedTopic')
-        self.video_published_topic.add_subscription(subscriptions.SqsSubscription(self.feed_update_queue))
+        self.video_published_topic.add_subscription(subscriptions.SqsSubscription(self.publish_event_feed_queue))
+
+        self.register_confirmation_topic = sns.Topic(self, 'registerConfirmationTopic')
 
         # Utils layer
         self.utils_layer = create_python_lambda_layer(self, 'utils', 'layer/utils')
 
         self.__create_user_pool()
+        self.__create_api_gateway()
+
         self.__create_source_upload_processing()
         self.__create_notify_subscribers()
         self.__create_update_feed()
-
-        self.__create_api_gateway()
 
 
     def __create_source_upload_processing(self) -> None:
@@ -200,7 +205,7 @@ class CloudMoviesStack(Stack):
                 'error.$': '$.errorInfo.Cause'
             })
         )
-        parallel.add_catch(failed_publish, errors=["States.ALL"], result_path="$.errorInfo")
+        parallel.add_catch(failed_publish, errors=['States.ALL'], result_path='$.errorInfo')
 
         state_machine = sfn.StateMachine(
             self, 'transcodingStateMachine', 
@@ -245,29 +250,87 @@ class CloudMoviesStack(Stack):
 
 
     def __create_update_feed(self) -> None:
+        self.register_confirmation_topic.add_subscription(subscriptions.LambdaSubscription(create_lambda(
+            self, 'create_user_feed',
+            env_vars=[
+                ('FEEDS_TABLE', self.feeds_table.table_name), 
+                ('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[
+                self.feeds_table.grant_write_data, 
+                self.videos_table.grant_read_data]
+        )))
+
         create_lambda(
-            self, 'update_feed',
+            self, 'user_update_feed',
             env_vars=[
                 ('VIDEOS_TABLE', self.videos_table.table_name),
-                ('RATINGS_TABLE', self.ratings_table.table_name),
-                ('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name),
-                ('FEEDS_TABLE', self.feed_update_queue.queue_arn)],
+                ('FEEDS_TABLE', self.feeds_table.table_name)],
             permissions=[
                 self.videos_table.grant_read_data,
-                self.ratings_table.grant_read_data,
-                self.subscriptions_table.grant_read_data,
-                self.feeds_table.grant_write_read_data,
-                self.feed_update_queue.grant_consume_messages]
+                self.feeds_table.grant_read_write_data,
+                self.user_event_feed_queue.grant_consume_messages]
         ).add_event_source_mapping(
-            "SQSEventSource",
-            event_source_arn=self.feed_update_queue.queue_arn,
+            'userEventFeedSource',
+            event_source_arn=self.user_event_feed_queue.queue_arn,
             batch_size=1,
-            enabled=True
+        )
+
+        create_lambda(
+            self, 'publish_update_feed',
+            env_vars=[
+                ('VIDEOS_TABLE', self.videos_table.table_name),
+                ('FEEDS_TABLE', self.feeds_table.table_name)],
+            permissions=[
+                self.videos_table.grant_read_data,
+                self.feeds_table.grant_read_write_data,
+                self.publish_event_feed_queue.grant_consume_messages]
+        ).add_event_source_mapping(
+            'publishEventFeedSource',
+            event_source_arn=self.publish_event_feed_queue.queue_arn,
+            batch_size=1,
+        )
+
+        videos_filter = {
+            'eventName': ['MODIFY'],
+            'dynamodb': {'NewImage': {'videoType': {'S': ['MOVIE', 'SHOW']}}}
+        }
+        subscriptions_filter = {'eventName': ['INSERT', 'REMOVE']}
+        ratings_filter = {'eventName': ['INSERT', 'MODIFY', 'REMOVE']}
+        self.__create_pipe('videosFeedPipe', self.videos_table, self.publish_event_feed_queue, videos_filter)
+        self.__create_pipe('subscriptionsFeedPipe', self.subscriptions_table, self.user_event_feed_queue, subscriptions_filter)
+        self.__create_pipe('ratingsFeedPipe', self.ratings_table, self.user_event_feed_queue, ratings_filter)
+
+
+    def __create_pipe(self, pipe_name: str, table: dynamodb.Table, queue: sqs.Queue, filter_pattern: dict={}) -> None:
+        pipe_role = iam.Role(self, f'{pipe_name}Role',
+            assumed_by=iam.ServicePrincipal('pipes.amazonaws.com'),
+            inline_policies={
+                'PipeSourcePolicy': iam.PolicyDocument(statements=[iam.PolicyStatement(
+                    actions=[
+                        'dynamodb:DescribeStream', 'dynamodb:GetRecords', 
+                        'dynamodb:GetShardIterator', 'dynamodb:ListStreams'],
+                    resources=[table.table_stream_arn],
+                )]),
+                'PipeTargetPolicy': iam.PolicyDocument(statements=[iam.PolicyStatement(
+                    actions=['sqs:SendMessage'], resources=[queue.queue_arn]
+                )])
+            }
+        )
+
+        pipes.CfnPipe(self, pipe_name,
+            role_arn=pipe_role.role_arn, source=table.table_stream_arn, target=queue.queue_arn,
+            source_parameters=pipes.CfnPipe.PipeSourceParametersProperty(
+                dynamo_db_stream_parameters=pipes.CfnPipe.PipeSourceDynamoDBStreamParametersProperty(
+                    starting_position='LATEST',
+                ),
+                filter_criteria=pipes.CfnPipe.FilterCriteriaProperty(
+                    filters=[pipes.CfnPipe.FilterProperty(pattern=json.dumps(filter_pattern))]
+                )
+            )
         )
 
 
-
-    def __create_api_gateway(self) -> apigateway.RestApi:
+    def __create_api_gateway(self) -> None:
         upload_lambda = create_lambda(self, 'upload_video')
         upload_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         self.source_bucket.grant_put(upload_lambda)
@@ -296,8 +359,17 @@ class CloudMoviesStack(Stack):
         
         stream_lambda.add_to_role_policy(iam.PolicyStatement(
             actions=['s3:*'],
-            resources=[f"{self.publish_bucket.bucket_arn}/*"]
+            resources=[f'{self.publish_bucket.bucket_arn}/*']
         ))
+
+        userpool_ps = iam.PolicyStatement(
+                actions=['cognito-idp:ListUsers'],
+                resources=[self.pool.user_pool_arn]
+            )
+        sns_ps = iam.PolicyStatement(
+                actions=['sns:*'],
+                resources=[self.pool.user_pool_arn]
+            ) 
 
         userpool_ps = iam.PolicyStatement(
                 actions=['cognito-idp:ListUsers'],
@@ -493,12 +565,18 @@ class CloudMoviesStack(Stack):
                 self.publish_bucket.grant_delete]
         ))
 
-        return api
+        self.api = api
 
 
-    def __create_user_pool(self) -> cognito.UserPool:
+    def __create_user_pool(self) -> None:
         attach_role_lambda = create_lambda(self, 'attach_role')
-        
+        self.register_confirmation_topic.add_subscription(subscriptions.LambdaSubscription(attach_role_lambda))
+        registration_confirmation_lambda = create_lambda(
+            self, 'registration_confirmation',
+            env_vars=[('REGISTER_CONFIRMATION_TOPIC_ARN', self.register_confirmation_topic.topic_arn)],
+            permissions=[self.register_confirmation_topic.grant_publish]
+        )
+    
         pool = cognito.UserPool(
             self, USER_POOL,
             sign_in_case_sensitive=False,
@@ -538,7 +616,7 @@ class CloudMoviesStack(Stack):
                 )
             ),
             lambda_triggers=cognito.UserPoolTriggers(
-                post_confirmation=attach_role_lambda
+                post_confirmation=registration_confirmation_lambda
             ), 
             removal_policy=RemovalPolicy.DESTROY
         )
@@ -613,4 +691,4 @@ class CloudMoviesStack(Stack):
         CfnOutput(self, 'UserPoolClientId', value=client.user_pool_client_id)
         CfnOutput(self, 'UserPoolDomain', value=pool_domain.domain_name)
 
-        return pool
+        self.pool = pool
