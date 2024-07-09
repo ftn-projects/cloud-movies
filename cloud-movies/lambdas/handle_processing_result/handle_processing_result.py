@@ -1,3 +1,4 @@
+from datetime import datetime
 import boto3
 import json
 import os
@@ -34,15 +35,27 @@ def handler(event, context):
         table = dynamodb.Table(videos_table)
         table.update_item(
             Key={'videoId': primary_key, 'videoType': sort_key},
-            UpdateExpression='SET files = :val',
-            ExpressionAttributeValues={':val': {
-                res: {'path': f'{publish_key}_{res}.mp4', 'size': obj.content_length} for res, obj in objects.items()
-            }}
-        )
-        response = table.get_item(
-            Key={'videoId': primary_key, 'videoType': sort_key}
+            UpdateExpression='SET files = :filesVal',
+            ExpressionAttributeValues={
+                ':filesVal': {res: {'path': f'{publish_key}_{res}.mp4', 'size': obj.content_length} for res, obj in objects.items()},
+                ':modifiedVal': datetime.now().isoformat()
+            }
         )
 
+        response = table.get_item(Key={'videoId': primary_key, 'videoType': sort_key})
+
+        if response['Item']['status'] == 'published':
+            return
+        
+        table.update_item(
+            Key={'videoId': primary_key, 'videoType': sort_key},
+            UpdateExpression='SET status = :statusVal',
+            ExpressionAttributeValues={
+                ':statusVal': 'published',
+            }
+        )
+
+        response['Item']['status'] = 'published'
         sns.publish(
             TopicArn=published_video_arn,
             Subject='Video published',

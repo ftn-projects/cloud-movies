@@ -26,6 +26,7 @@ ROLE_ACCESS_CONTROL = {
 
 def get_jwks():
     jwks_url = f'https://cognito-idp.{REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json'
+    print(jwks_url)
     response = requests.get(jwks_url)
     response.raise_for_status()
     return response.json()

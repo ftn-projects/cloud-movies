@@ -416,10 +416,10 @@ class CloudMoviesStack(Stack):
         # Create API Gateway
         api = apigateway.RestApi(
             self, API_GATEWAY, 
-            default_method_options=apigateway.MethodOptions(
-                authorization_type=apigateway.AuthorizationType.CUSTOM,
-                authorizer=authorizer
-            ),
+            # default_method_options=apigateway.MethodOptions(
+            #     authorization_type=apigateway.AuthorizationType.CUSTOM,
+            #     authorizer=authorizer
+            # ),
             default_cors_preflight_options=apigateway.CorsOptions(
                 allow_methods=apigateway.Cors.ALL_METHODS,
                 allow_origins=apigateway.Cors.ALL_ORIGINS
@@ -445,11 +445,15 @@ class CloudMoviesStack(Stack):
 
         # GET /upload
         upload_video_integration = apigateway.LambdaIntegration(upload_lambda)
-        api.root.add_resource('upload').add_method('GET', upload_video_integration)
+        api.root.add_resource('upload').add_method('GET', upload_video_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         # GET /content - admin
         list_videos_integration = apigateway.LambdaIntegration(list_videos_lambda)
-        content_resource.add_method('GET', list_videos_integration)
+        content_resource.add_method('GET', list_videos_integration, 
+                                                   authorization_type=apigateway.AuthorizationType.CUSTOM,
+                                                   authorizer=authorizer)
 
         # GET /content/{videoId} - anyone
         find_video_integration = apigateway.LambdaIntegration(find_video_lambda)
