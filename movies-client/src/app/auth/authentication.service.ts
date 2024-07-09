@@ -6,7 +6,7 @@ import {
   CognitoUserPool,
 } from "amazon-cognito-identity-js";
 import {environments} from "../../environments/evnironment";
-import {BehaviorSubject, Observable} from "rxjs";
+import {BehaviorSubject, from, Observable} from "rxjs";
 
 @Injectable({
   providedIn: 'root'
@@ -128,5 +128,27 @@ export class AuthenticationService {
         this.router.navigate(['/login']);
       }
     });
+  }
+  getAccessToken() {
+    let currentUser = this.userPool.getCurrentUser();
+    if(!currentUser){
+      console.log('ops');
+      return from('');
+    } else {
+      return from(
+        new Promise((resolve, reject) => {
+        currentUser?.getSession((err: any, session: any) => {
+          if(err){
+            reject(err);
+          } else if (!session?.isValid()){
+            resolve(null);
+          } else {
+            // Change to access token if needed
+            resolve(session?.getAccessToken().getJwtToken());
+            }
+          })
+        })
+      );
+    }
   }
 }
