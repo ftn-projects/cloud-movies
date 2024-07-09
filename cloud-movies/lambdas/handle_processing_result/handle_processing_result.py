@@ -46,7 +46,7 @@ def handler(event, context):
         sns.publish(
             TopicArn=published_video_arn,
             Subject='Video published',
-            Message=json.dumps(response['Item'])
+            Message=json.dumps(response['Item'], default=str)
         )
 
     else:
