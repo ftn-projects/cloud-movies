@@ -34,13 +34,13 @@ def handler(event, context):
     if info['success'] == True:
         table = dynamodb.Table(videos_table)
         table.update_item(
-            Key={'videoId': primary_key, 'videoType': sort_key},
-            UpdateExpression='SET files = :filesVal',
-            ExpressionAttributeValues={
-                ':filesVal': {res: {'path': f'{publish_key}_{res}.mp4', 'size': obj.content_length} for res, obj in objects.items()},
-                ':modifiedVal': datetime.now().isoformat()
-            }
-        )
+    Key={'videoId': primary_key, 'videoType': sort_key},
+    UpdateExpression='SET files = :filesVal, modified_at = :modifiedVal',
+    ExpressionAttributeValues={
+        ':filesVal': {res: {'path': f'{publish_key}_{res}.mp4', 'size': obj.content_length} for res, obj in objects.items()},
+        ':modifiedVal': datetime.now().isoformat()
+    }
+)
 
         response = table.get_item(Key={'videoId': primary_key, 'videoType': sort_key})
 

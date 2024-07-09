@@ -67,13 +67,15 @@ def handler(event, context):
 
 def process_metadata(text: bytes) -> dict:
     loaded_json = json.loads(text.decode('utf-8'))
+    print(loaded_json)
+
     now = datetime.now().isoformat()
 
     metadata = {
         'title': loaded_json['title'].strip(),
         'description': loaded_json['description'].strip(),
         'releaseDate': datetime.strptime(loaded_json['releaseDate'], '%Y-%m-%d').isoformat(),
-        'duration': int(loaded_json['duration']),
+        'duration': 0,
         'status': 'created',
         'created_at': now,
         'modified_at': now,
@@ -84,9 +86,9 @@ def process_metadata(text: bytes) -> dict:
         metadata.update({
             'videoId': str(uuid.uuid4()),
             'videoType': 'MOVIE',
-            'genres': ','.join([g.strip() for g in loaded_json['genres']]),
-            'actors': ','.join([a.strip() for a in loaded_json['actors']]),
-            'directors': ','.join([d.strip() for d in loaded_json['directors']])
+            'genres': ','.join([g.strip() for g in loaded_json['genres'].split(',')]),
+            'actors': ','.join([a.strip() for a in loaded_json['actors'].split(',')]),
+            'directors': ','.join([d.strip() for d in loaded_json['directors'].split(',')])
         })
     else:
         season, episode = int(loaded_json['season']), int(loaded_json['episode'])

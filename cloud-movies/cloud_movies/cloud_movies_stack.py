@@ -612,8 +612,8 @@ class CloudMoviesStack(Stack):
         # GET /content/feed/{userId}
         content_resource.add_resource('feed').add_resource('{userId}').add_method('GET', create_lambda_integration(
             self, 'get_feed',
-            env_vars=[('FEEDS_TABLE', self.feeds_table.table_name)],
-            permissions=[self.feeds_table.grant_read_data]
+            env_vars=[('FEEDS_TABLE', self.feeds_table.table_name), ('VIDEOS_TABLE', self.videos_table.table_name)],
+            permissions=[self.feeds_table.grant_read_data, self.videos_table.grant_read_data]
         ), 
             authorization_type=apigateway.AuthorizationType.CUSTOM,
             authorizer=authorizer)

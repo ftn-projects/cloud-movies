@@ -19,6 +19,7 @@ ROLE_ACCESS_CONTROL = {
     'User': ['GET/content/', 'GET/content/query', 'GET/subscription/',
              'POST/subscription/', 'DELETE/subscription/',
              'GET/video/', 'POST/ratings/', 'GET/show/',
+             'GET/content/feed'
             ]
 }
 
@@ -77,7 +78,7 @@ def check_authorization(roles, method_arn):
             for access_pattern in ROLE_ACCESS_CONTROL[role]:
                 access_method, access_path = access_pattern.split('/', 1)
                 print(access_method, access_path)
-                if method == access_method and (path == access_path or access_path == '*'):
+                if method == access_method and (str(path).startswith(access_path) or access_path == '*'):
                     print('Yipi')
                     return True
     return False

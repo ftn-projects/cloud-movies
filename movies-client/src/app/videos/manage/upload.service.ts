@@ -14,13 +14,15 @@ export class UploadService {
   }
 
   uploadFile(upload: any, file: Blob): Observable<void> {
-    const formData = new FormData();
-    Object.keys(upload.fields).forEach(key => {
-      formData.append(key, upload.fields[key]);
-    });
-    formData.append('file', file);
+    console.log(upload.uploadUrl)
 
-    console.log(upload.url, formData)
-    return this.http.post<void>(upload.url, formData);
+    let formData = new FormData();
+    for (const key in upload.uploadUrl.fields) {
+      formData.append(key, upload.uploadUrl.fields[key]);
+    }
+    formData.append('file', file);
+    formData.set('Content-Type', 'application/zip');
+
+    return this.http.post<void>(upload.uploadUrl.url, formData);
   }
 }

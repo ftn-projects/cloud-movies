@@ -50,12 +50,14 @@ export class ManageShowComponent {
     const basicDetails = this.basicDetailsComponent.detailsGroup.value;
     const extendedDetails = this.extendedDetailsComponent.detailsGroup.value;
 
-    return {
+    let details = {
       ...basicDetails,
       'genres': extendedDetails.genres.split(',').map((genre: string) => genre.trim()),
       'actors': extendedDetails.actors.split(',').map((actor: string) => actor.trim()),
       'directors': extendedDetails.directors.split(',').map((director: string) => director.trim())
     };
+    details.releaseDate = new Date(details.releaseDate).toISOString().split('T')[0];
+    return details;
   }
 
   createShow() {
