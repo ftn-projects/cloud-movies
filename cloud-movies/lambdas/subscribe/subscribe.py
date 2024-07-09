@@ -3,10 +3,44 @@ import boto3
 import json
 import utils
 
-def handler(event, context):
-    table_name = os.getenv('SUBSCRIPTIONS_TABLE')
+table_name = os.getenv('SUBSCRIPTIONS_TABLE')
+userpool_id = os.getenv('USERPOOL_ID')
 
-    dynamodb = boto3.resource('dynamodb')
+sns = boto3.client('sns')
+cognito = boto3.client('cognito-idp')
+dynamodb = boto3.resource('dynamodb')
+
+def get_user_email(sub: str):
+    try:
+        response = cognito.list_users(
+            UserPoolId=userpool_id,
+            Filter=f'sub = "{sub}"',
+            AttributesToGet=['email']
+        )
+        print('aaaa', response)
+        if 'Users' in response:
+            user = response['Users'][0]
+            email = user['Attributes'][0]['Value'] # since we are returning only email
+            print(email) 
+            return email
+
+    except Exception as e:
+        print('Error getting user email: {e}')
+        return ''
+
+def subscribe_to_sns(email: str, subscription_type: str):
+    topic_name = subscription_type.replace('::','-').replace(' ', '_')
+    response = sns.create_topic(Name=topic_name)
+    topic_arn = response['TopicArn']
+    print(topic_arn)
+    sns.subscribe(
+        TopicArn=topic_arn,
+        Protocol='email',
+        Endpoint=email
+    )
+
+def handler(event, context):
+
     table = dynamodb.Table(table_name)
 
     user_id = event['pathParameters']['userId']
@@ -38,6 +72,10 @@ def handler(event, context):
 
     try: 
         response = table.put_item(Item=item)
+        email = get_user_email(user_id)
+        if email == '':
+            return utils.create_response(400, 'Error')
+        subscribe_to_sns(email, sk)
 
         return {
             'statusCode': 200,
@@ -50,3 +88,5 @@ def handler(event, context):
         }
     except Exception as e:
         return utils.create_response(400, f'Error inserting item {str(e)}')
+    
+

@@ -241,6 +241,11 @@ class CloudMoviesStack(Stack):
             self, 'notify_subscribers',
             env_vars=[('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)],
             permissions=[self.subscriptions_table.grant_read_data])
+        notify_subscribers_lambda.add_to_role_policy(
+            statement=iam.PolicyStatement(
+                actions=['sns:*'],
+                resources=[self.pool.user_pool_arn]
+            ))
         self.video_published_topic.add_subscription(subscriptions.LambdaSubscription(notify_subscribers_lambda))
 
 
@@ -357,12 +362,36 @@ class CloudMoviesStack(Stack):
             resources=[f'{self.publish_bucket.bucket_arn}/*']
         ))
 
+        userpool_ps = iam.PolicyStatement(
+                actions=['cognito-idp:ListUsers'],
+                resources=[self.pool.user_pool_arn]
+            )
+        sns_ps = iam.PolicyStatement(
+                actions=['sns:*'],
+                resources=[self.pool.user_pool_arn]
+            ) 
+
+        userpool_ps = iam.PolicyStatement(
+                actions=['cognito-idp:ListUsers'],
+                resources=[self.pool.user_pool_arn]
+            )
+        sns_ps = iam.PolicyStatement(
+                actions=['sns:*'],
+                resources=[self.pool.user_pool_arn]
+            ) 
+
         subscribe_lambda = create_lambda(self, 'subscribe', layers=[self.utils_layer])
+        subscribe_lambda.add_to_role_policy(statement=userpool_ps)
+        subscribe_lambda.add_to_role_policy(statement=sns_ps)
         subscribe_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
+        subscribe_lambda.add_environment('USERPOOL_ID', self.user_pool_id)
         self.subscriptions_table.grant_read_write_data(subscribe_lambda)
 
         unsubscribe_lambda = create_lambda(self, 'unsubscribe', layers=[self.utils_layer])
         unsubscribe_lambda.add_environment('SUBSCRIPTIONS_TABLE', self.subscriptions_table.table_name)
+        unsubscribe_lambda.add_environment('USERPOOL_ID', self.user_pool_id)
+        unsubscribe_lambda.add_to_role_policy(statement=userpool_ps)
+        unsubscribe_lambda.add_to_role_policy(statement=sns_ps)
         self.subscriptions_table.grant_read_write_data(unsubscribe_lambda)
 
         rate_content_lambda = create_lambda(self, 'rate_content', layers=[self.utils_layer])
@@ -655,7 +684,7 @@ class CloudMoviesStack(Stack):
                                resources=[pool.user_pool_arn]
                             )]))
         
-
+        self.pool = pool
         self.user_pool_id = pool.user_pool_id
         self.user_pool_client_id = client.user_pool_client_id
         CfnOutput(self, 'UserPoolId', value=pool.user_pool_id)
