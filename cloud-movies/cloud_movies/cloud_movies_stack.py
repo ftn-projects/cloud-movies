@@ -228,7 +228,7 @@ class CloudMoviesStack(Stack):
         cleanup_lambda.add_environment('SOURCE_BUCKET', self.source_bucket.bucket_name)
         cleanup_lambda.add_environment('PUBLISH_BUCKET', self.publish_bucket.bucket_name)
         cleanup_lambda.add_environment('VIDEOS_TABLE', self.videos_table.table_name)
-        cleanup_lambda.add_environment('PUBLISHED_VIDEO_ARN', self.source_upload_processing_topic.topic_arn)
+        cleanup_lambda.add_environment('PUBLISHED_VIDEO_ARN', self.video_published_topic.topic_arn)
         cleanup_lambda.add_environment('RESOLUTIONS', ','.join(VIDEO_RESOLUTIONS))
         self.publish_bucket.grant_read(cleanup_lambda)
         self.publish_bucket.grant_delete(cleanup_lambda)
