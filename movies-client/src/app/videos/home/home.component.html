@@ -1,0 +1,10 @@
+<div class="home">
+  <form class="search-form" (ngSubmit)="onSubmit()">
+    <input type="text" id="search-box" placeholder="Search..." name="search" [(ngModel)]="searchText"/>
+    <button class="search-button" type="submit"><i class="fa fa-search"></i></button>
+  </form>
+
+  <div class="video-list" *ngFor="let c of homepageContent">
+    <app-video-card [content]="c"></app-video-card>
+  </div>
+</div>

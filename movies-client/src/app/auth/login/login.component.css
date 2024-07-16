@@ -1,0 +1,59 @@
+.login {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-form {
+  background-color: #31363F;
+  margin: auto;
+  padding-top: 5vh;
+  padding-bottom: 5vh;
+  height: 50vh;
+  width: 30vw;
+  display: flex;
+  border: black solid 1px;
+  border-radius: 10px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+button[mat-raised-button] {
+  width: 50%;
+  color: white;
+  height: 3rem;
+  border: 0;
+  border-radius: 40px;
+  background-color: rgb(95,46,172);
+  cursor: pointer;
+}
+
+.login-header{
+  color: white;
+  font-weight: bold;
+}
+
+mat-form-field {
+  width: 80%;
+}
+
+input[matInput] {
+  width: 100%;
+  align-self: center;
+  font-size: 1rem;
+  text-decoration: none;
+  background-color: transparent;
+}
+
+p{
+  color: white;
+}
+
+a{
+  font-weight: bold;
+  color: rgb(136, 71, 255);
+}

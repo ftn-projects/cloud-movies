@@ -1,0 +1,31 @@
+mat-toolbar {
+  background-color: rgb(95,46,172);
+  position: fixed;
+  overflow: hidden;
+  z-index: 10000;
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+a {
+  text-decoration: none;
+  color: white;
+  margin-right: 5px;
+  margin-left: 5px;
+}
+
+a[mat-button] {
+  height: auto;
+  font-size: 20px;
+  color: white;
+}
+
+.logo {
+  color: white;
+  margin-right: 1em;
+}
+

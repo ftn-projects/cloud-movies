@@ -1,0 +1,32 @@
+<div class="registration">
+  <form [formGroup]="registrationForm" class="registration-form">
+    <h1 class="registration-header">Register</h1>
+    <mat-form-field>
+      <mat-label>First Name</mat-label>
+      <input matInput required formControlName="firstName">
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Last Name</mat-label>
+      <input matInput required formControlName="lastName">
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Birthday</mat-label>
+      <input matInput type="date" required formControlName="birthdate">
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Email</mat-label>
+      <input matInput required formControlName="email">
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Username</mat-label>
+      <input matInput required formControlName="username">
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Password</mat-label>
+      <input matInput required formControlName="password">
+    </mat-form-field>
+    <button mat-raised-button type="submit" (click)="register()">Register</button>
+    <p>Already have an account? <a routerLink="/login">Login here</a></p>
+  </form>
+</div>
+

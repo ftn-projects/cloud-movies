@@ -1,0 +1,21 @@
+<div class="page-wrapper">
+    <div class="form-wrapper">
+        <h2 class="page-title"><span *ngIf="!movieId">Create</span><span *ngIf="movieId">Edit</span> movie</h2>
+        <h4 class="page-subtitle">Details</h4>
+        <app-manage-basic-details></app-manage-basic-details>
+        <app-manage-extended-details></app-manage-extended-details>
+        <div class="form-buttons" *ngIf="movieId">
+            <button style="color: white;" mat-button (click)="cancelDetails()">Cancel</button>
+            <button color="primary" mat-raised-button (click)="updateDetails()">Update details</button>
+        </div>
+        <h4 class="page-subtitle">Video</h4>
+        <app-upload-video [videoId]="movieId"></app-upload-video>
+        <div class="upload-file-button">
+            <button mat-raised-button color="primary" (click)="updateVideo()" [disabled]="!getFile()" style="width: 200px;" *ngIf="movieId">Upload new video</button>
+            <p *ngIf="getFile()">{{ getFile()?.name }}</p>
+        </div>
+        <button color="primary" mat-raised-button (click)="createMovie()" *ngIf="!movieId" style="margin-top: 30px;">Create movie</button>
+        <h4 class="page-subtitle" *ngIf="movieId">Danger zone</h4>
+        <button class="delete-button" color="warn" mat-stroked-button (click)="deleteMovie()" *ngIf="movieId">Delete movie</button>
+    </div>
+</div>

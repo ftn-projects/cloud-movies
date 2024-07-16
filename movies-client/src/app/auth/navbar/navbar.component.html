@@ -1,0 +1,7 @@
+<mat-toolbar *ngIf="userRole == 'Admin' || userRole == 'User' ">
+  <span class="logo" routerLink="/">Logo</span>
+  <app-navbar-admin *ngIf="userRole=='Admin'"></app-navbar-admin>
+  <app-navbar-user *ngIf="userRole=='User'"></app-navbar-user>
+  <span class="spacer"></span>
+  <button mat-raised-button (click)="logout()">Logout</button>
+</mat-toolbar>

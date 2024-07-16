@@ -1,0 +1,73 @@
+<div class="container">
+    <div class="player-tv-show">
+      <video
+        [src]="videoSource"
+        controls>
+      </video>
+      <div class="info-holder">
+        <div class="rating">
+          <i class="fa fa-heart rating-icon" (click)="rateContent(2)"></i>
+          <i class="fa fa-thumbs-up rating-icon" (click)="rateContent(1)"></i>
+          <i class="fa fa-thumbs-down rating-icon" (click)="rateContent(0)"></i>
+        </div>
+        <h2>Resolution</h2>
+        <mat-form-field>
+          <mat-label>Resolution</mat-label>
+          <mat-select (selectionChange)="getStream($event)">
+            <mat-option [value]="360">360p</mat-option>
+            <mat-option [value]="480">480p</mat-option>
+            <mat-option [value]="720">720p</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button class="button download-button" mat-raised-button (click)="download()">Download</button>
+      </div>
+  </div>
+  <div class="tv-show" *ngIf="contentDetails.videoType == 'SHOW'">
+    <div class="tv-show-episodes">
+      <div>
+      <h2>Select Season</h2>
+      <mat-form-field>
+        <mat-label>Season</mat-label>
+        <mat-select *ngFor="let s of seasons" (selectionChange)="selectSeason($event)" [value]="selectedSeason">
+          <mat-option [value]="s">{{s}}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      </div>
+      <div>
+      <h2>Select Episode</h2>
+      <mat-form-field>
+        <mat-label>Episode</mat-label>
+        <mat-select *ngFor="let ep of episodesOfSeason" (selectionChange)="selectEpisode($event)" [value]="selectedEpisode">
+          <mat-option [value]="ep.episodeNumber">{{ep.episodeNumber}} {{ep.title}}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      </div>
+    </div>
+    <div class="tv-show-details">
+      <h3 *ngIf="selectedEpisode?.episodeNumber!=0">{{selectedEpisode?.episodeNumber}} {{selectedEpisode?.title}}({{selectedEpisode?.duration}}min)</h3>
+      <p>{{selectedEpisode?.description}}</p>
+    </div>
+  </div>
+    <div class="details">
+      <h1 class="title">{{contentDetails.title}} <i *ngIf="contentDetails.videoType==='TV-SHOW'" class="fa fa-plus sub-button" (click)="subscribe(contentDetails.title, 'shows')"></i></h1>
+      <hr style="width: 100%;">
+      <h2>Description</h2>
+      <p class="description">{{contentDetails.description}}</p>
+      <h2>Actors</h2>
+      <ul class="actors" *ngFor="let actor of contentDetails.actors">
+        <li>{{actor}}<i class="fa fa-plus sub-button" (click)="subscribe(actor, 'actors')"></i></li>
+      </ul>
+      <h2>Genre</h2>
+      <ul class="genre" *ngFor="let genre of contentDetails.genres">
+        <li>{{genre}}<i class="fa fa-plus sub-button" (click)="subscribe(genre, 'genres')"></i></li>
+      </ul>
+      <h2>Directors</h2>
+      <ul class="directors" *ngFor="let director of contentDetails.directors">
+        <li [value]="director">{{director}}<i class="fa fa-plus sub-button" (click)="subscribe(director, 'directors')"></i></li>
+      </ul>
+      <div class="button-holder">
+          <button class="button" mat-raised-button (click)="edit()">Edit</button>
+          <button class="button" mat-raised-button (click)="delete()">Delete</button>
+      </div>
+    </div>
+</div>

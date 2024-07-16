@@ -1,0 +1,58 @@
+<div class="page-wrapper">
+  <div class="form-wrapper">
+    <h2 class="page-title"><span *ngIf="!showId">Create</span><span *ngIf="showId">Edit</span> show</h2>
+    <h4 class="page-subtitle">Details</h4>
+    <app-manage-basic-details></app-manage-basic-details>
+    <app-manage-extended-details></app-manage-extended-details>
+    <div class="form-buttons" *ngIf="showId">
+      <button style="color: white;" mat-button (click)="cancelDetails()">Cancel</button>
+      <button color="primary" mat-raised-button (click)="updateDetails()">Update details</button>
+    </div>
+    <div class="form-buttons" *ngIf="!showId">
+      <button color="primary" mat-raised-button (click)="createShow()">Create show</button>
+    </div>
+    <h4 class="page-subtitle" *ngIf="showId">Seasons</h4>
+    <div class="manage-seasons" *ngIf="showId" cdkDropList (cdkDropListDropped)="dropSeason($event)">
+      <form class="inline-section" [formGroup]="createSeason">
+        <mat-form-field style="flex-grow: 1;">
+          <mat-label>Season title</mat-label>
+          <input matInput type="text" formControlName="seasonTitle" maxlength="64">
+        </mat-form-field>
+        <mat-form-field style="width: min-content;">
+          <mat-label>Release date</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="releaseDate">
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+        <button class="add-season-button" mat-raised-button (click)="addSeason()">Add season</button>
+      </form>
+      <div *ngFor="let season of seasons; let i = index" class="season-section" cdkDrag>
+        <div class="inline-section">
+          <mat-icon class="drag-icon">drag_indicator</mat-icon>
+          <p style="flex-grow: 1; font-size: medium;">{{ season.title }}</p>
+          <p>{{ season.releaseDate | date:'MM/dd/yyyy' }}</p>
+          <button mat-icon-button (click)="deleteSeason(i)">
+            <mat-icon>clear</mat-icon>
+          </button>
+        </div>
+        <div cdkDropList (cdkDropListDropped)="dropEpisode($event, i)">
+          <div *ngFor="let episode of getEpisodesForSeason(i); let j = index" class="episode-section" cdkDrag>
+            <div class="inline-section episode">
+              <p style="flex-grow: 1;">{{ episode.title }}</p>
+              <p>{{ episode.releaseDate }}</p>
+              <button mat-icon-button [routerLink]="['/edit/episode'+showId+'/'+(i+1)+'/'+(j+1)]">
+                <mat-icon>edit</mat-icon>
+              </button> 
+              <button mat-icon-button (click)="deleteEpisode(j, i)">
+                <mat-icon>clear</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button class="add-episode-button" mat-stroked-button [routerLink]="['/create/episode/'+showId+'/'+(i+1)]">Add episode</button>
+      </div>
+    </div>
+    <h4 class="page-subtitle" *ngIf="showId">Danger zone</h4>
+    <button class="delete-button" color="warn" mat-stroked-button (click)="deleteShow()" *ngIf="showId">Delete show</button>
+  </div>  
+</div>

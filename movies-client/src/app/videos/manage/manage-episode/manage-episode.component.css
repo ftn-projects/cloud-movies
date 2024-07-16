@@ -1,0 +1,60 @@
+.page-wrapper {
+    padding-top: 100px;
+    padding-bottom: 50px;
+    padding-inline: 200px;
+}
+
+.form-wrapper {
+    display: flex;
+    flex-direction: column;
+    padding: 40px;
+    border: 2px solid white;
+    border-radius: 30px;
+    box-shadow: 10px 10px #171a1f;
+}
+
+.page-title{
+    color: white;
+    font-weight: bold;
+    font-size: 5vh;
+}
+
+.page-subtitle {
+    color: white;
+    font-size: 3vh;
+    padding-top: 30px;
+}
+
+.form-buttons {
+    display: flex;
+    justify-content: right;
+    gap: 20px;
+    padding-top: 30px;
+}
+
+.delete-button:not(:disabled) {
+    width: 200px;
+}
+
+.inline-section {
+    display: flex;
+    gap: 20px;
+    color: white;
+}
+
+.upload-file-button {
+    display: flex;
+    justify-content: left;
+    margin-top: 20px;
+    gap: 10px;
+}
+
+.upload-file-button button:disabled {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.upload-file-button p {
+    align-content: center;
+    margin: 0;
+    color: white;
+}

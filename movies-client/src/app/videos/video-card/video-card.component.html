@@ -1,0 +1,14 @@
+<div (click)="onCardClick()" class="video-card">
+  <div class="title-rating">
+    <h2 class="title">{{content.title}} ({{getYear()}})</h2>
+  </div>
+  <div class="details-holder">
+    <div class="left-column">
+      <p>Genres: {{content.genres}}</p>
+    </div>
+    <div class="right-column">
+      <p>Duration: {{content.duration}} minutes</p>
+    </div>
+  </div>
+  <p class="description">{{content.description}}</p>
+</div>

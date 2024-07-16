@@ -1,0 +1,15 @@
+<div class="login">
+  <form [formGroup]="credentialsForm" class="login-form">
+    <h1 class="login-header">Login</h1>
+    <mat-form-field>
+      <mat-label>Username or email</mat-label>
+      <input matInput required formControlName="email">
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Password</mat-label>
+      <input matInput required formControlName="password">
+    </mat-form-field>
+    <button mat-raised-button type="submit" (click)="login()">Login</button>
+    <p>Don't have an account? <a routerLink="/register">Register here</a></p>
+  </form>
+</div>
